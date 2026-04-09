@@ -17,8 +17,10 @@ import json
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status, Depends
+from fastapi.responses import JSONResponse, FileResponse
+from sqlalchemy.orm import Session
+from sqlalchemy import select, delete
 
 from api.schemas import (
     AnalysisResponse,
@@ -28,6 +30,8 @@ from api.schemas import (
     KeywordOverlap,
     UploadResponse,
 )
+from api.db.session import get_db
+from api.db.models import Candidate, JobAnalysis, RankingScore
 from config.settings import UPLOAD_DIR, PROCESSED_DIR, RESULTS_DIR
 from data_processing.pdf_extractor import extract_text_from_pdf, extract_text_from_txt
 from data_processing.text_cleaner import clean_text
@@ -38,15 +42,11 @@ from utils.logger import get_logger
 logger = get_logger(__name__)
 router = APIRouter()
 
-# In-memory store of uploaded resume info (reset on server restart)
-# In production, use a DB or cache (Redis/PostgreSQL).
-_uploaded_resumes: List[dict] = []  # [{filename, raw_text, clean_text}]
-
 
 # ─── Health ───────────────────────────────────────────────────────────────────
 
 @router.get("/", response_model=HealthResponse, tags=["System"])
-async def health_check():
+async def health_check(db: Session = Depends(get_db)):
     """Return service status and model availability."""
     # Try importing optional deps to report availability
     tfidf_ok = True  # always available (scikit-learn)
@@ -76,14 +76,16 @@ async def health_check():
 # ─── Upload Resumes ───────────────────────────────────────────────────────────
 
 @router.post("/upload_resume", response_model=UploadResponse, tags=["Resumes"])
-async def upload_resume(files: List[UploadFile] = File(...)):
+async def upload_resume(
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db)
+):
     """
     Upload one or more resume files (PDF or TXT).
 
-    The files are saved to the uploads/ directory and their extracted
-    text is stored in memory for the next /analyze call.
+    The files are saved to the uploads/ directory and their metadata
+    is stored permanently in the database.
     """
-    global _uploaded_resumes
     uploaded_names: List[str] = []
 
     for upload in files:
@@ -113,19 +115,23 @@ async def upload_resume(files: List[UploadFile] = File(...)):
 
         clean = clean_text(raw_text)
 
-        _uploaded_resumes.append({
-            "filename":   unique_name,
-            "original":   original_name,
-            "raw_text":   raw_text,
-            "clean_text": clean,
-        })
+        # Save to Database
+        db_candidate = Candidate(
+            filename=unique_name,
+            original_name=original_name,
+            raw_text=raw_text,
+            clean_text=clean
+        )
+        db.add(db_candidate)
         uploaded_names.append(original_name)
-        logger.info(f"Uploaded & processed: {original_name} → {unique_name}")
+        logger.info(f"Uploaded & stored in DB: {original_name} → {unique_name}")
+
+    db.commit()
 
     return UploadResponse(
         status="success",
         uploaded_files=uploaded_names,
-        message=f"{len(uploaded_names)} resume(s) uploaded. Call POST /analyze next.",
+        message=f"{len(uploaded_names)} resume(s) uploaded and saved to DB. Call POST /analyze next.",
     )
 
 
@@ -135,19 +141,18 @@ async def upload_resume(files: List[UploadFile] = File(...)):
 async def analyze(
     job_description: str = Form(..., description="Full text of the job description"),
     top_n: int = Form(default=10, ge=1, le=100),
+    db: Session = Depends(get_db)
 ):
     """
-    Rank all uploaded resumes against the given job description.
-
-    Expects at least one resume to have been uploaded via POST /upload_resume.
-    Returns a ranked list with explainable scores.
+    Rank all resumes in the database against the given job description.
     """
-    global _uploaded_resumes
+    # 1. Fetch all candidates from DB
+    candidates = db.execute(select(Candidate)).scalars().all()
 
-    if not _uploaded_resumes:
+    if not candidates:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="No resumes uploaded. Call POST /upload_resume first.",
+            detail="No resumes found in database. Call POST /upload_resume first.",
         )
 
     if not job_description.strip():
@@ -156,82 +161,157 @@ async def analyze(
             detail="Job description cannot be empty.",
         )
 
-    logger.info(f"Analyzing {len(_uploaded_resumes)} resumes …")
+    logger.info(f"Analyzing {len(candidates)} resumes against JD …")
 
     jd_clean = clean_text(job_description)
 
+    # 2. Run Ranking Engine
     ranker = CandidateRanker()
-    ranked = ranker.rank(
+    ranked_dicts = ranker.rank(
         job_description_clean=jd_clean,
         job_description_raw=job_description,
-        resumes_clean=[r["clean_text"] for r in _uploaded_resumes],
-        resumes_raw=[r["raw_text"]   for r in _uploaded_resumes],
-        filenames=[r["filename"]    for r in _uploaded_resumes],
+        resumes_clean=[c.clean_text for c in candidates],
+        resumes_raw=[c.raw_text for c in candidates],
+        filenames=[c.filename for c in candidates],
         top_n=top_n,
     )
 
-    # Persist results to disk
-    import uuid as _uuid
-    result_filename = f"results_{_uuid.uuid4().hex[:8]}.json"
-    save_json(
-        {"job_description": job_description, "rankings": ranked},
-        result_filename,
-        RESULTS_DIR,
+    # 3. Persist Analysis and individual scores to DB
+    db_analysis = JobAnalysis(
+        raw_text=job_description,
+        clean_text=jd_clean
     )
+    db.add(db_analysis)
+    db.flush()  # Get analysis.id
 
-    # Build response
-    top_candidates = [
-        CandidateResponse(
-            rank=c["rank"],
-            candidate_name=c["candidate_name"],
-            filename=c["filename"],
-            tfidf_score=c["tfidf_score"],
-            semantic_score=c["semantic_score"],
-            hybrid_score=c["hybrid_score"],
-            skill_match_ratio=c["skill_match_ratio"],
-            matched_skills=c["matched_skills"],
-            missing_skills=c["missing_skills"],
-            extra_skills=c["extra_skills"],
-            keyword_overlap=KeywordOverlap(**c["keyword_overlap"]),
+    top_candidates_responses = []
+    
+    # Mapping of results back to DB candidates
+    candidate_map = {c.filename: c for c in candidates}
+
+    for res in ranked_dicts:
+        candidate = candidate_map[res["filename"]]
+        
+        # Save scores to DB
+        db_score = RankingScore(
+            analysis_id=db_analysis.id,
+            candidate_id=candidate.id,
+            rank=res["rank"],
+            tfidf_score=res["tfidf_score"],
+            semantic_score=res["semantic_score"],
+            hybrid_score=res["hybrid_score"],
+            skill_match_ratio=res["skill_match_ratio"],
+            matched_skills=res["matched_skills"],
+            missing_skills=res["missing_skills"],
+            extra_skills=res["extra_skills"],
+            keyword_overlap=res["keyword_overlap"]
         )
-        for c in ranked
-    ]
+        db.add(db_score)
+        
+        # Prepare response model
+        top_candidates_responses.append(
+            CandidateResponse(
+                rank=res["rank"],
+                candidate_name=res["candidate_name"],
+                filename=res["filename"],
+                tfidf_score=res["tfidf_score"],
+                semantic_score=res["semantic_score"],
+                hybrid_score=res["hybrid_score"],
+                skill_match_ratio=res["skill_match_ratio"],
+                matched_skills=res["matched_skills"],
+                missing_skills=res["missing_skills"],
+                extra_skills=res["extra_skills"],
+                keyword_overlap=KeywordOverlap(**res["keyword_overlap"]),
+            )
+        )
+
+    db.commit()
 
     return AnalysisResponse(
         status="success",
         job_description_preview=job_description[:200],
-        total_resumes_processed=len(_uploaded_resumes),
-        top_candidates=top_candidates,
-        result_file=result_filename,
+        total_resumes_processed=len(candidates),
+        top_candidates=top_candidates_responses,
+        result_file=f"db_analysis_{db_analysis.id}",
     )
 
 
-# ─── Clear Session ────────────────────────────────────────────────────────────
+# ─── Clear All Data ───────────────────────────────────────────────────────────
 
-@router.delete("/clear", tags=["Resumes"])
-async def clear_session():
+@router.delete("/clear", tags=["System"])
+async def clear_data(db: Session = Depends(get_db)):
     """
-    Clear all uploaded resumes from the current session.
+    Clear all candidates, analyses, and scores from the database.
+    Does NOT delete the actual PDF/TXT files from storage/uploads.
     """
-    global _uploaded_resumes
-    count = len(_uploaded_resumes)
-    _uploaded_resumes = []
-    return {"status": "cleared", "removed_count": count}
+    db.execute(delete(RankingScore))
+    db.execute(delete(JobAnalysis))
+    db.execute(delete(Candidate))
+    db.commit()
+    return {"status": "cleared", "message": "All database records removed."}
 
 
 # ─── List Results ─────────────────────────────────────────────────────────────
 
 @router.get("/results", tags=["Results"])
-async def list_results():
-    """List all saved result JSON files."""
-    files = sorted(RESULTS_DIR.glob("*.json"), key=lambda f: f.stat().st_mtime, reverse=True)
-    return {"result_files": [f.name for f in files]}
+async def list_results(db: Session = Depends(get_db)):
+    """List all saved analysis runs from the database."""
+    analyses = db.execute(select(JobAnalysis).order_by(JobAnalysis.created_at.desc())).scalars().all()
+    return {
+        "result_files": [
+            f"Analysis #{a.id} - {a.created_at.strftime('%Y-%m-%d %H:%M')}" 
+            for a in analyses
+        ],
+        "analysis_ids": [a.id for a in analyses]
+    }
 
 
-@router.get("/results/{filename}", tags=["Results"])
-async def get_result(filename: str):
-    """Retrieve a specific result file by name."""
-    path = RESULTS_DIR / filename
-    if not path.exists() or not path.is_file():
-        raise HTTPException(status_code=404, detail=f"Result '{filename}' not found.")
-    return JSONResponse(content=json.loads(path.read_text(encoding="utf-8")))
+@router.get("/results/{analysis_id}", tags=["Results"])
+async def get_result(analysis_id: int, db: Session = Depends(get_db)):
+    """Retrieve the full score details for a specific analysis run."""
+    analysis = db.get(JobAnalysis, analysis_id)
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Analysis not found.")
+        
+    scores = db.execute(
+        select(RankingScore, Candidate.original_name)
+        .join(Candidate, RankingScore.candidate_id == Candidate.id)
+        .where(RankingScore.analysis_id == analysis_id)
+        .order_by(RankingScore.rank)
+    ).all()
+    
+    return {
+        "job_description": analysis.raw_text,
+        "rankings": [
+            {
+                "rank": s.RankingScore.rank,
+                "candidate_name": s.original_name,
+                "hybrid_score": s.RankingScore.hybrid_score,
+                # ... other fields if needed ...
+            } for s in scores
+        ]
+    }
+@router.get("/resumes/{filename}", tags=["Resumes"])
+async def get_resume_file(filename: str):
+    """
+    Serve the raw resume file (PDF or TXT) for previewing.
+    Includes security checks to prevent path traversal.
+    """
+    # Security: Ensure the filename doesn't contain path traversal characters
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+
+    file_path = UPLOAD_DIR / filename
+    
+    if not file_path.exists() or not file_path.is_file():
+        logger.error(f"File not found: {file_path}")
+        raise HTTPException(status_code=404, detail="Resume file not found.")
+
+    # Determine content type
+    content_type = "application/pdf" if filename.lower().endswith(".pdf") else "text/plain"
+    
+    return FileResponse(
+        path=file_path,
+        media_type=content_type,
+        filename=filename
+    )

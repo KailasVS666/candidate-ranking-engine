@@ -109,8 +109,9 @@ def clean_text(text: str) -> str:
         text = text.lower()
 
     # 5. Remove punctuation / special characters (keep spaces & letters/digits)
+    # SMART FIX: We preserve '+' and '#' for C++, C#, and '.' for .NET
     if REMOVE_PUNCTUATION:
-        text = re.sub(r"[^a-z0-9\s]", " ", text)
+        text = re.sub(r"[^a-z0-9\s\+\#\.]", " ", text)
 
     # 6. Collapse whitespace
     text = re.sub(r"\s+", " ", text).strip()

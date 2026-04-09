@@ -21,6 +21,7 @@ from typing import List, Dict, Any, Tuple, Set
 from config.settings import (
     TFIDF_WEIGHT,
     SEMANTIC_WEIGHT,
+    SKILL_WEIGHT,
     TOP_N_CANDIDATES,
     MIN_SCORE_THRESHOLD,
 )
@@ -115,11 +116,6 @@ class CandidateRanker:
         # 3. Build and score candidates
         results: List[CandidateResult] = []
         for idx in range(n):
-            # Hybrid Calculation
-            h_score: float = round(
-                TFIDF_WEIGHT * tfidf_scores[idx] + SEMANTIC_WEIGHT * semantic_scores[idx], 
-                6
-            )
             
             # Skill & Keyword Overlap
             resume_skills = extract_skills(resumes_raw[idx], method="hybrid")
@@ -134,7 +130,7 @@ class CandidateRanker:
                 filename=filenames[idx],
                 tfidf_score=tfidf_scores[idx],
                 semantic_score=semantic_scores[idx],
-                hybrid_score=h_score,
+                hybrid_score=0.0,  # Calculated below
                 skill_match_ratio=overlap["match_ratio"],
                 matched_skills=overlap["matched_skills"],
                 missing_skills=overlap["missing_skills"],
@@ -146,6 +142,15 @@ class CandidateRanker:
                     "resume_keyword_count": len(resume_words),
                 },
             )
+            
+            # Hybrid Calculation (Now with 3 pillars!)
+            result.hybrid_score = round(
+                TFIDF_WEIGHT * tfidf_scores[idx] + 
+                SEMANTIC_WEIGHT * semantic_scores[idx] +
+                SKILL_WEIGHT * result.skill_match_ratio,
+                6
+            )
+            
             results.append(result)
 
         # 4. Sort and Filter

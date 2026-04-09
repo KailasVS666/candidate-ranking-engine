@@ -65,8 +65,12 @@ def rule_based_extraction(text: str) -> Set[str]:
     matched: Set[str] = set()
 
     for skill in skills:
-        # Use word boundaries to avoid partial matches (e.g. "R" ≠ "React")
-        pattern = r"\b" + re.escape(skill.lower()) + r"\b"
+        # SMART FIX: Standard \b (word boundary) fails for skills ending in symbols like C++
+        # We use lookarounds to ensure the skill is not surrounded by alphanumeric characters.
+        # This allows matching "C++" but not "R" in "React".
+        escaped_skill = re.escape(skill.lower())
+        pattern = rf"(?<![a-z0-9]){escaped_skill}(?![a-z0-9])"
+        
         if re.search(pattern, text_lower):
             matched.add(skill)
 

@@ -39,8 +39,9 @@ SPACY_MODEL: str = "en_core_web_sm"
 
 # ─── Scoring & Similarity ────────────────────────────────────────────────────
 # Weights for the hybrid score (must sum to 1.0)
-TFIDF_WEIGHT: float    = 0.40
-SEMANTIC_WEIGHT: float = 0.60
+TFIDF_WEIGHT: float    = 0.15
+SEMANTIC_WEIGHT: float = 0.45
+SKILL_WEIGHT: float    = 0.40
 
 # Sentence-Transformers model (runs 100% locally — no AI API calls)
 SENTENCE_TRANSFORMER_MODEL: str = "all-MiniLM-L6-v2"
@@ -57,6 +58,10 @@ MIN_SCORE_THRESHOLD: float = 0.0       # Drop candidates below this hybrid score
 API_HOST: str   = os.getenv("API_HOST", "0.0.0.0")
 API_PORT: int   = int(os.getenv("API_PORT", 8000))
 API_RELOAD: bool = os.getenv("API_RELOAD", "true").lower() == "true"
+
+# ─── Database ────────────────────────────────────────────────────────────────
+# SQLite database file path
+DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{STORAGE_DIR}/app.db")
 
 # ─── Frontend ────────────────────────────────────────────────────────────────
 STREAMLIT_PAGE_TITLE: str = "AI Resume Screening System"

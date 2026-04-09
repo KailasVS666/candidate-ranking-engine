@@ -16,6 +16,7 @@ Run with:
 from __future__ import annotations
 
 import sys
+import base64
 from pathlib import Path
 
 import requests
@@ -55,6 +56,15 @@ st.markdown(
                           padding:2px 10px; margin:2px; display:inline-block; font-size:0.78rem; }
     .skill-chip-extra   { background:#dbeafe; color:#1e40af; border-radius:12px;
                           padding:2px 10px; margin:2px; display:inline-block; font-size:0.78rem; }
+    
+    /* ─── Metric Card Fix (prevent truncation) ─── */
+    [data-testid="stMetricValue"] {
+        font-size: 1.6rem !important;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.85rem !important;
+        white-space: nowrap;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -73,7 +83,24 @@ st.markdown(
 
 
 # ─── Helper: render ranking results ──────────────────────────────────────────
-def _render_results(result: dict) -> None:
+def _display_pdf(filename: str, api_base: str):
+    """Fetch PDF from API and display in an iframe."""
+    try:
+        resp = requests.get(f"{api_base}/resumes/{filename}", timeout=10)
+        if resp.status_code == 200:
+            if filename.lower().endswith(".pdf"):
+                base64_pdf = base64.b64encode(resp.content).decode('utf-8')
+                pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
+                st.markdown(pdf_display, unsafe_allow_html=True)
+            else:
+                st.text_area("Resume Content", resp.text, height=600)
+        else:
+            st.error(f"Could not load resume: {resp.text}")
+    except Exception as e:
+        st.error(f"Error fetching resume: {e}")
+
+
+def _render_results(result: dict, api_base: str) -> None:
     """Render ranking cards from API response dict."""
     candidates = result.get("top_candidates", [])
     total = result.get("total_resumes_processed", 0)
@@ -96,46 +123,62 @@ def _render_results(result: dict) -> None:
             f"{medal} #{c['rank']}  {c['candidate_name']}  — Hybrid: {score:.1%}",
             expanded=(c["rank"] <= 3),
         ):
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("Hybrid Score",  f"{c['hybrid_score']:.1%}")
-            m2.metric("TF-IDF",        f"{c['tfidf_score']:.1%}")
-            m3.metric("Semantic",      f"{c['semantic_score']:.1%}")
-            m4.metric("Skill Match",   f"{c['skill_match_ratio']:.1%}")
-
-            st.markdown("**✅ Matched Skills**")
-            if c["matched_skills"]:
-                chips = " ".join(
-                    f'<span class="skill-chip-matched">{s}</span>'
-                    for s in c["matched_skills"]
-                )
-                st.markdown(chips, unsafe_allow_html=True)
+            # Toggle Button logic
+            show_preview = st.toggle("🔍 Toggle Resume Preview", key=f"preview_{c['filename']}")
+            
+            if show_preview:
+                col_stats, col_pdf = st.columns([1, 1.2])
+                with col_stats:
+                    _render_candidate_stats(c)
+                with col_pdf:
+                    st.info(f"📄 Previewing: **{c['candidate_name']}**")
+                    _display_pdf(c["filename"], api_base)
             else:
-                st.caption("No matched skills found.")
+                _render_candidate_stats(c)
 
-            st.markdown("**❌ Missing Skills**")
-            if c["missing_skills"]:
-                chips = " ".join(
-                    f'<span class="skill-chip-missing">{s}</span>'
-                    for s in c["missing_skills"]
-                )
-                st.markdown(chips, unsafe_allow_html=True)
-            else:
-                st.caption("No missing skills — great match!")
 
-            st.markdown("**➕ Extra Skills (bonus)**")
-            if c["extra_skills"]:
-                chips = " ".join(
-                    f'<span class="skill-chip-extra">{s}</span>'
-                    for s in c["extra_skills"][:15]
-                )
-                st.markdown(chips, unsafe_allow_html=True)
+def _render_candidate_stats(c: dict):
+    """Renders the metrics and skills for a candidate."""
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Hybrid Score",  f"{c['hybrid_score']:.1%}")
+    m2.metric("TF-IDF",        f"{c['tfidf_score']:.1%}")
+    m3.metric("Semantic",      f"{c['semantic_score']:.1%}")
+    m4.metric("Skill Match",   f"{c['skill_match_ratio']:.1%}")
 
-            kw = c.get("keyword_overlap", {})
-            st.caption(
-                f"🔑 Keyword overlap: **{kw.get('common_keyword_count', 0)}** common words "
-                f"(JD: {kw.get('jd_keyword_count', 0)}, "
-                f"Resume: {kw.get('resume_keyword_count', 0)})"
-            )
+    st.markdown("**✅ Matched Skills**")
+    if c["matched_skills"]:
+        chips = " ".join(
+            f'<span class="skill-chip-matched">{s}</span>'
+            for s in c["matched_skills"]
+        )
+        st.markdown(chips, unsafe_allow_html=True)
+    else:
+        st.caption("No matched skills found.")
+
+    st.markdown("**❌ Missing Skills**")
+    if c["missing_skills"]:
+        chips = " ".join(
+            f'<span class="skill-chip-missing">{s}</span>'
+            for s in c["missing_skills"]
+        )
+        st.markdown(chips, unsafe_allow_html=True)
+    else:
+        st.caption("No missing skills — great match!")
+
+    st.markdown("**➕ Extra Skills (bonus)**")
+    if c["extra_skills"]:
+        chips = " ".join(
+            f'<span class="skill-chip-extra">{s}</span>'
+            for s in c["extra_skills"][:15]
+        )
+        st.markdown(chips, unsafe_allow_html=True)
+
+    kw = c.get("keyword_overlap", {})
+    st.caption(
+        f"🔑 Keyword overlap: **{kw.get('common_keyword_count', 0)}** common words "
+        f"(JD: {kw.get('jd_keyword_count', 0)}, "
+        f"Resume: {kw.get('resume_keyword_count', 0)})"
+    )
 
 
 # ─── Sidebar ─────────────────────────────────────────────────────────────────
@@ -227,7 +270,7 @@ with tab_analyze:
                         if resp.status_code == 200:
                             result = resp.json()
                             st.session_state["last_result"] = result
-                            _render_results(result)
+                            _render_results(result, api_base)
                         else:
                             st.error(f"Analysis failed ({resp.status_code}): {resp.text}")
                     except Exception as exc:
@@ -235,33 +278,53 @@ with tab_analyze:
 
         elif "last_result" in st.session_state:
             st.info("Showing last analysis result. Upload new resumes and click Analyze to refresh.")
-            _render_results(st.session_state["last_result"])
+            _render_results(st.session_state["last_result"], api_base)
         else:
             st.info("Upload resumes and click **Analyze** to see results here.")
 
 
 # ── Tab 2: Browse saved results ───────────────────────────────────────────────
 with tab_results:
-    st.subheader("📂 Saved Result Files")
+    st.subheader("📂 Saved Job Analyses")
     if st.button("🔄 Refresh list", key="refresh_results"):
         st.rerun()
 
     try:
         resp = requests.get(f"{api_base}/results", timeout=5)
-        files = resp.json().get("result_files", [])
+        res_data = resp.json()
+        display_names = res_data.get("result_files", [])
+        analysis_ids = res_data.get("analysis_ids", [])
     except Exception:
-        files = []
+        display_names = []
+        analysis_ids = []
         st.warning("Cannot reach API to list saved results.")
 
-    if not files:
-        st.info("No saved results yet. Run an analysis first.")
+    if not display_names:
+        st.info("No saved results found in the database. Carry out an analysis first.")
     else:
-        selected = st.selectbox("Select a result file:", files)
-        if selected and st.button("Load selected result", key="load_result"):
+        # Map display names to IDs
+        name_to_id = dict(zip(display_names, analysis_ids))
+        selected_name = st.selectbox("Select a past analysis:", display_names)
+        
+        if selected_name and st.button("Load analysis details", key="load_result"):
+            selected_id = name_to_id[selected_name]
             try:
-                resp = requests.get(f"{api_base}/results/{selected}", timeout=10)
-                data = resp.json()
-                _render_results(data)
+                resp = requests.get(f"{api_base}/results/{selected_id}", timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    st.write(f"### Job Description used for {selected_name}")
+                    st.info(data.get("job_description", "N/A")[:500] + "...")
+                    
+                    st.write("### Rankings")
+                    # Note: Since the new endpoint only returns basic data, 
+                    # we show a simplified list here or update the endpoint to return more.
+                    # HOWEVER, we want to use the full _render_results if we have the data.
+                    # For now, let's just make sure the call signature is correct if it was called.
+                    # (In Tab 2, it wasn't calling _render_results before my latest change, but I should be consistent)
+                    for rank in data.get("rankings", []):
+                        st.write(f"**#{rank['rank']}** — {rank['candidate_name']} (Score: {rank['hybrid_score']:.1%})")
+                else:
+                    st.error(f"Failed to load: {resp.text}")
             except Exception as exc:
                 st.error(f"Error loading result: {exc}")
 

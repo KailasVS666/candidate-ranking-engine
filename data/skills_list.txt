@@ -166,3 +166,13 @@ Feature Store
 Model Monitoring
 Drift Detection
 Data Quality
+OpenGL
+Vulkan
+DirectX
+Game Engine
+Shader Programming
+GLSL
+HLSL
+Real-time Rendering
+3D Graphics
+Computer Graphics

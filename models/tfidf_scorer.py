@@ -39,6 +39,9 @@ class TFIDFScorer:
             sublinear_tf=True,       # Replace TF with 1 + log(TF) to dampen high freq
             strip_accents="unicode",
             analyzer="word",
+            # SMART FIX: Default pattern \b\w\w+\b strips out symbols.
+            # We explicitly allow +, #, and . inside words.
+            token_pattern=r"(?u)[a-z0-9\+\#\.]+",
         )
 
     def fit_transform(

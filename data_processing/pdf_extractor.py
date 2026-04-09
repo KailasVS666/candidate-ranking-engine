@@ -34,17 +34,18 @@ def extract_text_from_pdf(filepath: str | Path) -> str:
         logger.error(f"PDF not found: {filepath}")
         return ""
 
-    # ── Attempt 1: pdfplumber ─────────────────────────────────────────────────
-    text = _extract_with_pdfplumber(filepath)
-    if text.strip():
-        logger.debug(f"pdfplumber extracted {len(text)} chars from {filepath.name}")
-        return text
-
-    # ── Attempt 2: PyMuPDF ───────────────────────────────────────────────────
-    logger.warning(f"pdfplumber returned empty text for {filepath.name}; trying PyMuPDF …")
+    # ── Attempt 1: PyMuPDF (Optimised for Layout) ────────────────────────────
+    # PyMuPDF with sort=True is much better at handling multi-column resumes
     text = _extract_with_pymupdf(filepath)
     if text.strip():
         logger.debug(f"PyMuPDF extracted {len(text)} chars from {filepath.name}")
+        return text
+    
+    # ── Attempt 2: pdfplumber (Fallback) ──────────────────────────────────────
+    logger.warning(f"PyMuPDF failed for {filepath.name}; trying pdfplumber …")
+    text = _extract_with_pdfplumber(filepath)
+    if text.strip():
+        logger.debug(f"pdfplumber extracted {len(text)} chars from {filepath.name}")
         return text
 
     logger.error(f"Both extractors failed for {filepath.name}.")
@@ -79,7 +80,8 @@ def _extract_with_pymupdf(filepath: Path) -> str:
         pages_text: list[str] = []
         with fitz.open(str(filepath)) as doc:
             for page in doc:
-                pages_text.append(page.get_text("text"))
+                # IMPORTANT: sort=True handles multi-column layouts
+                pages_text.append(page.get_text("text", sort=True))
         return "\n".join(pages_text)
     except ImportError:
         logger.warning("PyMuPDF (fitz) not installed — skipping.")

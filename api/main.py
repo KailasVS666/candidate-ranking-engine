@@ -52,6 +52,16 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def on_startup():
         logger.info(f"🚀 API server starting on {API_HOST}:{API_PORT}")
+        
+        # Initialize Database (create tables if they don't exist)
+        try:
+            from api.db.session import engine, Base
+            # Import models to ensure they are registered with Base metadata
+            import api.db.models  # noqa
+            Base.metadata.create_all(bind=engine)
+            logger.info("✅ Database tables initialised.")
+        except Exception as e:
+            logger.error(f"❌ Failed to initialise database: {e}")
 
     @app.on_event("shutdown")
     async def on_shutdown():
