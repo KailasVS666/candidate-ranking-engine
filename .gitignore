@@ -29,11 +29,9 @@ MANIFEST
 huggingface/
 sentence_transformers_cache/
 
-# ─── Project runtime dirs (generated at startup) ──────────────────────────────
-uploads/
-processed/
-results/
-logs/
+# ─── Project runtime dirs (consolidated in storage/) ──────────────────────────
+storage/
+# (Individual .gitkeeps should be used if you want to track empty subfolders)
 
 # ─── Jupyter ──────────────────────────────────────────────────────────────────
 .ipynb_checkpoints/

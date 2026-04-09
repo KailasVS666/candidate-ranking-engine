@@ -1,0 +1,21 @@
+# Production-Ready Reorganization Tasks
+
+- `[x]` 1. Documentation & Audit Trail (`docs/`)
+  - `[x]` Move `VERIFICATION_REPORT.md` (Walkthrough) to `docs/`
+  - `[x]` Move `task.md` (Implementation log) to `docs/`
+  - `[x]` Create `docs/ARCHITECTURE.md`
+  - `[x]` Create `docs/API_REFERENCE.md`
+- `[x]` 2. Deployment & Containerization
+  - `[x]` Create `Dockerfile`
+  - `[x]` Create `docker-compose.yml`
+  - `[x]` Create `.dockerignore`
+- `[x]` 3. Project Metadata & Standards
+  - `[x]` Create `pyproject.toml`
+  - `[x]` Create `setup.cfg`
+- `[x]` 4. Code Cleanup & Refactoring
+  - `[x]` Add docstrings and type hints to all public functions
+  - `[x]` Move `verify_phase_*.py` into `scripts/archive/`
+  - `[x]` Consolidate storage logic (uploads/logs/results) into `storage/`
+- `[/]` 5. Verification & Final Push
+  - `[ ]` Run `pytest` and verify Streamlit
+  - `[ ]` Git commit and push final structure

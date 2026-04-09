@@ -16,7 +16,7 @@ Pipeline:
 
 import re
 import unicodedata
-from typing import List
+from typing import List, Set, Any
 
 from utils.logger import get_logger
 from config.settings import (
@@ -29,11 +29,17 @@ from config.settings import (
 logger = get_logger(__name__)
 
 # ── Lazy-load NLTK resources ──────────────────────────────────────────────────
-_STOPWORDS: set[str] | None = None
-_LEMMATIZER = None
+_STOPWORDS: Set[str] | None = None
+_LEMMATIZER: Any = None
 
 
-def _get_stopwords() -> set[str]:
+def _get_stopwords() -> Set[str]:
+    """
+    Lazy-load NLTK stopwords. Downloads them if not present.
+
+    Returns:
+        Set of English stopwords.
+    """
     global _STOPWORDS
     if _STOPWORDS is None:
         import nltk  # type: ignore
@@ -48,7 +54,13 @@ def _get_stopwords() -> set[str]:
     return _STOPWORDS
 
 
-def _get_lemmatizer():
+def _get_lemmatizer() -> Any:
+    """
+    Lazy-load NLTK WordNetLemmatizer. Downloads wordnet if not present.
+
+    Returns:
+        An instance of WordNetLemmatizer.
+    """
     global _LEMMATIZER
     if _LEMMATIZER is None:
         import nltk  # type: ignore
@@ -74,10 +86,10 @@ def clean_text(text: str) -> str:
     both TF-IDF vectorisation and skill extraction.
 
     Args:
-        text: Raw text from a resume or job description.
+        text (str): Raw text from a resume or job description.
 
     Returns:
-        Lowercased, stopword-free, lemmatised string.
+        str: Lowercased, stopword-free, lemmatised string.
     """
     if not text or not text.strip():
         return ""
@@ -125,6 +137,12 @@ def tokenize(text: str) -> List[str]:
     """
     Tokenise *text* after cleaning and return individual tokens.
     Useful for skill extraction and keyword overlap analysis.
+
+    Args:
+        text (str): Raw string to tokenize.
+
+    Returns:
+        List[str]: Cleaned tokens.
     """
     cleaned = clean_text(text)
     return cleaned.split()
@@ -135,6 +153,12 @@ def extract_sentences(text: str) -> List[str]:
     Split raw text into sentences for sentence-embedding models.
     Keeps sentences as-is (not cleaned) because semantic models
     work better on natural language.
+
+    Args:
+        text (str): Raw text to split.
+
+    Returns:
+        List[str]: List of sentence strings.
     """
     # Simple sentence splitter – good enough for resumes
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())

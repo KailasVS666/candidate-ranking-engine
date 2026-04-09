@@ -7,59 +7,62 @@ Adjust these values to tune the system behaviour without touching core logic.
 
 import os
 from pathlib import Path
+from typing import Tuple
 
 # ─── Project Root ────────────────────────────────────────────────────────────
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR: Path = Path(__file__).resolve().parent.parent
 
-# ─── Storage Paths ───────────────────────────────────────────────────────────
-UPLOAD_DIR       = BASE_DIR / "uploads"          # raw uploaded PDFs / text files
-PROCESSED_DIR    = BASE_DIR / "processed"        # cleaned text artefacts
-RESULTS_DIR      = BASE_DIR / "results"          # ranking output JSONs
-LOG_DIR          = BASE_DIR / "logs"
+# ─── Unified Storage Strategy ────────────────────────────────────────────────
+# All mutable data lives here to simplify Docker volume mapping and backups.
+STORAGE_DIR: Path = BASE_DIR / "storage"
+UPLOAD_DIR: Path  = STORAGE_DIR / "uploads"          # Raw uploaded PDFs / text files
+PROCESSED_DIR: Path = STORAGE_DIR / "processed"      # Cleaned text artefacts
+RESULTS_DIR: Path   = STORAGE_DIR / "results"        # Ranking output JSONs
+LOG_DIR: Path       = STORAGE_DIR / "logs"
 
-# Create directories on import so they always exist
+# Ensure all storage paths exist on startup
 for _dir in [UPLOAD_DIR, PROCESSED_DIR, RESULTS_DIR, LOG_DIR]:
     _dir.mkdir(parents=True, exist_ok=True)
 
 # ─── Text Preprocessing ──────────────────────────────────────────────────────
-REMOVE_STOPWORDS  = True
-REMOVE_PUNCTUATION = True
-LOWERCASE         = True
-MIN_TOKEN_LENGTH  = 2       # discard tokens shorter than this
+REMOVE_STOPWORDS: bool   = True
+REMOVE_PUNCTUATION: bool = True
+LOWERCASE: bool          = True
+MIN_TOKEN_LENGTH: int    = 2       # Discard tokens shorter than this
 
 # ─── Skill Extraction ────────────────────────────────────────────────────────
 # Path to the predefined skills list (one skill per line)
-SKILLS_FILE = BASE_DIR / "data" / "skills_list.txt"
+SKILLS_FILE: Path = BASE_DIR / "data" / "skills_list.txt"
 
 # spaCy model to use for NLP-based extraction
-SPACY_MODEL = "en_core_web_sm"
+SPACY_MODEL: str = "en_core_web_sm"
 
 # ─── Scoring & Similarity ────────────────────────────────────────────────────
-# Weights for the hybrid score  (must sum to 1.0)
-TFIDF_WEIGHT     = 0.40
-SEMANTIC_WEIGHT  = 0.60
+# Weights for the hybrid score (must sum to 1.0)
+TFIDF_WEIGHT: float    = 0.40
+SEMANTIC_WEIGHT: float = 0.60
 
-# Sentence-Transformers model (runs 100 % locally — no API calls)
-SENTENCE_TRANSFORMER_MODEL = "all-MiniLM-L6-v2"
+# Sentence-Transformers model (runs 100% locally — no AI API calls)
+SENTENCE_TRANSFORMER_MODEL: str = "all-MiniLM-L6-v2"
 
 # TF-IDF vectoriser settings
-TFIDF_MAX_FEATURES = 5000
-TFIDF_NGRAM_RANGE  = (1, 2)   # unigrams + bigrams
+TFIDF_MAX_FEATURES: int     = 5000
+TFIDF_NGRAM_RANGE: Tuple[int, int] = (1, 2)   # Unigrams + bigrams
 
 # ─── Ranking ─────────────────────────────────────────────────────────────────
-TOP_N_CANDIDATES  = 10        # how many candidates to return by default
-MIN_SCORE_THRESHOLD = 0.0     # drop candidates below this hybrid score
+TOP_N_CANDIDATES: int      = 10        # How many candidates to return by default
+MIN_SCORE_THRESHOLD: float = 0.0       # Drop candidates below this hybrid score
 
 # ─── API ─────────────────────────────────────────────────────────────────────
-API_HOST = os.getenv("API_HOST", "0.0.0.0")
-API_PORT = int(os.getenv("API_PORT", 8000))
-API_RELOAD = os.getenv("API_RELOAD", "true").lower() == "true"
+API_HOST: str   = os.getenv("API_HOST", "0.0.0.0")
+API_PORT: int   = int(os.getenv("API_PORT", 8000))
+API_RELOAD: bool = os.getenv("API_RELOAD", "true").lower() == "true"
 
 # ─── Frontend ────────────────────────────────────────────────────────────────
-STREAMLIT_PAGE_TITLE = "AI Resume Screening System"
-STREAMLIT_LAYOUT     = "wide"
+STREAMLIT_PAGE_TITLE: str = "AI Resume Screening System"
+STREAMLIT_LAYOUT: str      = "wide"
 
 # ─── Logging ─────────────────────────────────────────────────────────────────
-LOG_LEVEL  = os.getenv("LOG_LEVEL", "INFO")
-LOG_FORMAT = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
-LOG_FILE   = LOG_DIR / "app.log"
+LOG_LEVEL: str  = os.getenv("LOG_LEVEL", "INFO")
+LOG_FORMAT: str = "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+LOG_FILE: Path  = LOG_DIR / "app.log"

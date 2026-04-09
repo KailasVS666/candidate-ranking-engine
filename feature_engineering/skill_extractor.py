@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal, Set, List
+from typing import Literal, Set, List, Tuple, Any, Dict
 
 from config.settings import SKILLS_FILE, SPACY_MODEL
 from utils.logger import get_logger
@@ -30,6 +30,9 @@ def _load_skills_list() -> List[str]:
     """
     Load skills from SKILLS_FILE (one per line).
     Results are cached so the file is read only once per process.
+
+    Returns:
+        List[str]: List of skill strings.
     """
     skills_path = Path(SKILLS_FILE)
     if not skills_path.exists():
@@ -51,8 +54,11 @@ def rule_based_extraction(text: str) -> Set[str]:
     Match every skill from the predefined list against *text* using
     whole-word, case-insensitive regex.
 
+    Args:
+        text (str): Input text (resume or JD).
+
     Returns:
-        Set of matched skill strings (original casing from skills list).
+        Set[str]: Set of matched skill strings (original casing from skills list).
     """
     skills = _load_skills_list()
     text_lower = text.lower()
@@ -71,9 +77,12 @@ def rule_based_extraction(text: str) -> Set[str]:
 # ─── B. NLP-Based Extraction (spaCy PhraseMatcher) ───────────────────────────
 
 @lru_cache(maxsize=1)
-def _get_spacy_matcher():
+def _get_spacy_matcher() -> Tuple[Any, Any]:
     """
     Build and cache a spaCy PhraseMatcher loaded with every skill phrase.
+
+    Returns:
+        Tuple[nlp, matcher]: Loaded spaCy model and PhraseMatcher.
     """
     try:
         import spacy  # type: ignore
@@ -101,11 +110,14 @@ def _get_spacy_matcher():
 
 def nlp_based_extraction(text: str) -> Set[str]:
     """
-    Use spaCy PhraseMatcher to extract skills.  Falls back to an empty
+    Use spaCy PhraseMatcher to extract skills. Falls back to an empty
     set if spaCy or the model is not available.
 
+    Args:
+        text (str): Input text.
+
     Returns:
-        Set of matched skill strings.
+        Set[str]: Set of matched skill strings.
     """
     nlp, matcher = _get_spacy_matcher()
     if nlp is None:
@@ -136,13 +148,13 @@ def extract_skills(
     Extract skills from *text* using the specified *method*.
 
     Args:
-        text:   Raw or lightly cleaned resume / JD text.
-        method: "rule"   → keyword matching only
-                "nlp"    → spaCy PhraseMatcher only
-                "hybrid" → union of both (default)
+        text (str):  Raw or lightly cleaned resume / JD text.
+        method (str): "rule"   → keyword matching only
+                      "nlp"    → spaCy PhraseMatcher only
+                      "hybrid" → union of both (default)
 
     Returns:
-        Set of extracted skill strings.
+        Set[str]: Set of extracted skill strings.
     """
     if method == "rule":
         return rule_based_extraction(text)
@@ -162,12 +174,16 @@ def extract_skills(
 def compute_skill_overlap(
     resume_skills: Set[str],
     jd_skills: Set[str],
-) -> dict:
+) -> Dict[str, Any]:
     """
     Compare resume skills against job-description skills.
 
+    Args:
+        resume_skills (Set[str]): Skills extracted from resume.
+        jd_skills (Set[str]): Skills required by the JD.
+
     Returns:
-        dict with keys:
+        Dict[str, Any] with keys:
           - matched_skills  : skills present in both resume and JD
           - missing_skills  : skills required by JD but absent in resume
           - extra_skills    : skills candidate has beyond JD requirements

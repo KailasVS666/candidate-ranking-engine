@@ -1,0 +1,33 @@
+# Exclude virtual environments
+venv/
+.venv/
+env/
+
+# Exclude cache folders
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Exclude data and results from the image (use volumes instead)
+uploads/
+processed/
+results/
+logs/
+
+# Exclude environment files
+.env
+
+# Exclude test cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Exclude IDE folders
+.vscode/
+.idea/
+.git/
+
+# Exclude README and docs from image
+README.md
+docs/

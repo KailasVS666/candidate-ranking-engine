@@ -1,0 +1,33 @@
+version: '3.9'
+
+services:
+  backend:
+    build: .
+    container_name: resume_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./processed:/app/processed
+      - ./results:/app/results
+      - ./logs:/app/logs
+    env_file: .env.example
+    command: python run_api.py
+    restart: always
+
+  frontend:
+    build: .
+    container_name: resume_ui
+    ports:
+      - "8501:8501"
+    env_file: .env.example
+    depends_on:
+      - backend
+    command: streamlit run frontend/app.py
+    restart: always
+
+volumes:
+  uploads:
+  processed:
+  results:
+  logs:

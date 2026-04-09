@@ -9,9 +9,6 @@ How it works:
   3. Transform each resume into its TF-IDF vector.
   4. Compute cosine similarity between each resume vector and the JD vector.
   5. Return scores in [0, 1].
-
-TF-IDF captures *term frequency* weighted by *inverse document frequency*,
-meaning rare but important words contribute more to the similarity score.
 """
 
 from __future__ import annotations
@@ -35,10 +32,11 @@ class TFIDFScorer:
     """
 
     def __init__(self) -> None:
+        """Initialize the vectorizer with parameters from config/settings.py."""
         self.vectorizer = TfidfVectorizer(
             max_features=TFIDF_MAX_FEATURES,
             ngram_range=TFIDF_NGRAM_RANGE,
-            sublinear_tf=True,       # replace TF with 1 + log(TF) to dampen high freq
+            sublinear_tf=True,       # Replace TF with 1 + log(TF) to dampen high freq
             strip_accents="unicode",
             analyzer="word",
         )
@@ -52,12 +50,15 @@ class TFIDFScorer:
         Fit the vectorizer and compute similarity scores.
 
         Args:
-            job_description: Cleaned JD text.
-            resumes:         List of cleaned resume texts.
+            job_description (str): Cleaned JD text.
+            resumes (List[str]): List of cleaned resume texts.
 
         Returns:
-            List of cosine similarity scores [0, 1] — one per resume.
+            List[float]: Cosine similarity scores [0, 1] — one per resume.
         """
+        if not resumes:
+            return []
+
         corpus = [job_description] + resumes
         logger.info(f"TF-IDF fitting on corpus size={len(corpus)}")
 
@@ -84,14 +85,14 @@ def compute_tfidf_scores(
     resumes: List[str],
 ) -> List[float]:
     """
-    Convenience function — creates a TFIDFScorer and returns scores.
+    Convenience function that creates a TFIDFScorer and returns scores.
 
     Args:
-        job_description: Cleaned job description text.
-        resumes:         List of cleaned resume texts.
+        job_description (str): Cleaned job description text.
+        resumes (List[str]): List of cleaned resume texts.
 
     Returns:
-        List[float] – cosine similarity score per resume.
+        List[float]: Cosine similarity score per resume.
     """
     scorer = TFIDFScorer()
     return scorer.fit_transform(job_description, resumes)
