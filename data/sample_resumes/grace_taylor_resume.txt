@@ -1,0 +1,19 @@
+Grace Taylor
+grace.taylor@email.com | Boston, MA
+
+SUMMARY
+Entry-level Data Analyst with 1 year of experience.
+Passionate about data storytelling and visualisation.
+
+SKILLS
+Python, SQL, Excel, Tableau, Power BI, pandas, Matplotlib, Seaborn,
+Google Analytics, Communication, Teamwork, Problem Solving
+
+EXPERIENCE
+Data Analyst Intern — Marketing Agency (2024–Present)
+- Created weekly dashboards in Tableau for campaign performance
+- Wrote SQL queries for customer segmentation analysis
+- Assisted with A/B test reporting for email campaigns
+
+EDUCATION
+B.S. Information Systems — Northeastern University, 2024

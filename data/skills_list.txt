@@ -1,0 +1,168 @@
+Python
+SQL
+NoSQL
+MongoDB
+PostgreSQL
+MySQL
+SQLite
+Redis
+Machine Learning
+Deep Learning
+Natural Language Processing
+NLP
+Computer Vision
+Data Science
+Data Analysis
+Data Engineering
+Data Visualization
+Statistics
+Mathematics
+Linear Algebra
+Calculus
+Probability
+TensorFlow
+PyTorch
+Keras
+Scikit-learn
+XGBoost
+LightGBM
+CatBoost
+Pandas
+NumPy
+Matplotlib
+Seaborn
+Plotly
+Tableau
+Power BI
+Jupyter
+Jupyter Notebook
+FastAPI
+Flask
+Django
+REST API
+GraphQL
+Microservices
+Docker
+Kubernetes
+Terraform
+Ansible
+Jenkins
+GitHub Actions
+CI/CD
+Linux
+Bash
+Shell Scripting
+Git
+GitHub
+GitLab
+Bitbucket
+AWS
+Azure
+Google Cloud
+GCP
+Cloud Computing
+Hadoop
+Spark
+Kafka
+Airflow
+dbt
+ETL
+Feature Engineering
+Model Training
+Model Deployment
+MLOps
+A/B Testing
+Hypothesis Testing
+Regression
+Classification
+Clustering
+Dimensionality Reduction
+PCA
+UMAP
+t-SNE
+Transformers
+BERT
+GPT
+LLM
+Hugging Face
+spaCy
+NLTK
+OpenCV
+PIL
+Image Processing
+HTML
+CSS
+JavaScript
+TypeScript
+React
+Angular
+Vue
+Node.js
+Express
+Spring Boot
+Java
+C++
+C
+Go
+Golang
+Rust
+Scala
+R
+MATLAB
+Tableau
+Excel
+Communication
+Leadership
+Problem Solving
+Teamwork
+Project Management
+Agile
+Scrum
+Kanban
+Jira
+Confluence
+Slack
+API Development
+Unit Testing
+Integration Testing
+PyTest
+JUnit
+Selenium
+Postman
+Swagger
+OpenAPI
+Elasticsearch
+Kibana
+Logstash
+Prometheus
+Grafana
+Security
+Cybersecurity
+Networking
+TCP/IP
+HTTP
+HTTPS
+DevOps
+SRE
+Reliability
+Scalability
+System Design
+Object Oriented Programming
+OOP
+Functional Programming
+Design Patterns
+SOLID Principles
+Microservices Architecture
+Event-Driven Architecture
+Data Structures
+Algorithms
+Time Complexity
+Space Complexity
+Big Data
+Real-Time Processing
+Batch Processing
+Data Pipelines
+Feature Store
+Model Monitoring
+Drift Detection
+Data Quality

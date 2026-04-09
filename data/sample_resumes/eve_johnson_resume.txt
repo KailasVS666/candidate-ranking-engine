@@ -1,0 +1,26 @@
+Eve Johnson
+eve.johnson@email.com | New York, NY
+
+SUMMARY
+Data Engineer & ML practitioner with 5 years building large-scale data pipelines.
+Expert in Spark, Kafka, Airflow, and cloud-native architectures on AWS.
+
+SKILLS
+Python, SQL, PostgreSQL, MongoDB, Redis, Apache Spark, Kafka, Airflow, dbt,
+AWS (S3, EMR, Glue, Lambda, SageMaker), GCP (BigQuery, Dataflow),
+Docker, Kubernetes, Terraform, CI/CD, Jenkins, Machine Learning,
+scikit-learn, pandas, NumPy, Data Engineering, ETL, Data Quality,
+Feature Engineering, Feature Store, Statistics
+
+EXPERIENCE
+Senior Data Engineer — FinTech Corp (2021–Present)
+- Architected real-time streaming pipelines with Kafka + Spark (5B events/day)
+- Built Feature Store on AWS SageMaker used by 10 ML teams
+- Reduced cloud costs by 35% through query optimisation (dbt + Redshift)
+
+Data Engineer — CloudData Inc (2019–2021)
+- Migrated on-prem Hadoop cluster to AWS EMR, cutting latency by 50%
+- Built Airflow DAGs for automated ML retraining pipelines
+
+EDUCATION
+B.S. Computer Engineering — Columbia University, 2019

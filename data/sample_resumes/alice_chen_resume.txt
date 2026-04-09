@@ -1,0 +1,32 @@
+Alice Chen
+alice.chen@email.com | linkedin.com/in/alicech | San Francisco, CA
+
+SUMMARY
+Senior Data Scientist with 7 years of experience building production ML systems.
+Expert in Python, TensorFlow, PyTorch, and cloud-native ML pipelines on AWS and GCP.
+
+SKILLS
+Python, SQL, PostgreSQL, Machine Learning, Deep Learning, TensorFlow, PyTorch,
+scikit-learn, pandas, NumPy, NLP, BERT, Hugging Face, Transformers,
+Docker, Kubernetes, AWS, GCP, Spark, Airflow, MLOps, A/B Testing,
+Feature Engineering, Statistics, Data Visualization, Tableau
+
+EXPERIENCE
+Senior Data Scientist — TechCorp AI (2021–Present)
+- Built end-to-end ML pipelines using Airflow + Spark processing 50M records/day
+- Deployed BERT-based NLP models on Kubernetes (AWS EKS), reducing latency by 40%
+- Led A/B testing framework adopted by 5 product teams
+- Mentored 3 junior data scientists
+
+Data Scientist — DataLabs Inc (2019–2021)
+- Developed customer churn models (XGBoost) achieving 92% AUC
+- Built real-time recommendation engine using collaborative filtering + PostgreSQL
+- Automated ETL pipelines with Airflow on GCP
+
+EDUCATION
+M.S. Computer Science (Machine Learning) — Stanford University, 2019
+B.S. Statistics — UC Berkeley, 2017
+
+CERTIFICATIONS
+AWS Certified Machine Learning – Specialty
+Google Professional Data Engineer

@@ -1,0 +1,20 @@
+Dave Wilson
+dave.wilson@email.com | Chicago, IL
+
+SUMMARY
+Software Engineer transitioning into Data Science. Completed ML bootcamp.
+Comfortable with Python basics and SQL. Eager to learn.
+
+SKILLS
+Python, SQL, Excel, Jupyter Notebook, pandas (basic), scikit-learn (basic),
+HTML, CSS, JavaScript, React, Node.js, Git
+
+EXPERIENCE
+Software Engineer — WebDev Agency (2021–Present)
+- Built responsive web applications using React and Node.js
+- Designed REST APIs with Express and MySQL
+- Collaborated in Agile sprints using Jira and Confluence
+
+EDUCATION
+B.S. Computer Science — DePaul University, 2021
+Completed: Coursera Machine Learning Specialisation (Andrew Ng), 2023

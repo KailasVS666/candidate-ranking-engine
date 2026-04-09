@@ -1,0 +1,26 @@
+Frank Lee
+frank.lee@email.com | Seattle, WA
+
+SUMMARY
+Research Scientist with PhD in Statistics, specialising in Bayesian methods,
+causal inference, and experimental design (A/B testing).
+
+SKILLS
+Python, R, SQL, Statistics, Bayesian Statistics, Causal Inference,
+A/B Testing, Hypothesis Testing, Regression, Mixed Models, Time Series,
+scikit-learn, Stan, PyMC, pandas, NumPy, Matplotlib, Seaborn, Jupyter,
+Machine Learning, Deep Learning, TensorFlow (basic), Communication, Leadership
+
+EXPERIENCE
+Research Scientist — Amazon Science (2020–Present)
+- Led experimentation platform serving 500K A/B tests/year
+- Developed causal ML models for ad attribution (Python + Stan)
+- Published 4 papers on causal inference at NeurIPS and ICML
+
+Statistician — Biotech Corp (2018–2020)
+- Designed clinical trial statistical analyses (R, mixed models)
+- Automated reporting pipelines reducing turnaround from 5 days to 4 hours
+
+EDUCATION
+Ph.D. Statistics — University of Washington, 2018
+B.S. Mathematics — MIT, 2013

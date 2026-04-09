@@ -1,0 +1,25 @@
+Bob Martinez
+bob.martinez@email.com | github.com/bobml | Austin, TX
+
+SUMMARY
+Data Scientist with 4 years of experience in Python and scikit-learn.
+Strong background in statistical modelling and SQL.
+
+SKILLS
+Python, SQL, MySQL, scikit-learn, pandas, NumPy, Matplotlib, Seaborn,
+Machine Learning, Regression, Classification, Clustering, Statistics,
+Flask, REST API, Git, Linux, Bash, Excel
+
+EXPERIENCE
+Data Scientist — RetailAI (2022–Present)
+- Built price optimisation models using gradient boosting (scikit-learn)
+- Designed ETL pipelines in Python + MySQL, reducing report time by 60%
+- Created dashboards in Tableau for executive reporting
+
+Junior Data Analyst — Analytics Co (2020–2022)
+- Performed exploratory data analysis on customer datasets (pandas, SQL)
+- Automated weekly reports with Python scripts
+- Supported A/B test analysis for marketing campaigns
+
+EDUCATION
+B.S. Mathematics — University of Texas, Austin, 2020

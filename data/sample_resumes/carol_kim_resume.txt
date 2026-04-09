@@ -1,0 +1,26 @@
+Carol Kim
+carol.kim@email.com | Seoul, South Korea
+
+SUMMARY
+Machine Learning Engineer with 6 years specialising in computer vision and NLP.
+Proficient in PyTorch, Hugging Face Transformers, and MLOps on Azure.
+
+SKILLS
+Python, PyTorch, TensorFlow, Keras, Hugging Face, Transformers, BERT, GPT,
+spaCy, NLTK, NLP, Computer Vision, OpenCV, scikit-learn, pandas, NumPy,
+Docker, Kubernetes, Azure, MLOps, Prometheus, Grafana, PostgreSQL, SQL,
+CI/CD, GitHub Actions, Unit Testing, PyTest
+
+EXPERIENCE
+ML Engineer — NLP Solutions (2020–Present)
+- Fine-tuned BERT and GPT models for document classification (99% accuracy)
+- Built real-time NLP inference service with FastAPI + Docker on Azure
+- Implemented model monitoring with Prometheus and Grafana
+
+Research Engineer — Computer Vision Lab (2018–2020)
+- Developed object detection pipeline with OpenCV + PyTorch
+- Published 2 papers on image segmentation at CVPR workshops
+
+EDUCATION
+M.S. Artificial Intelligence — KAIST, 2018
+B.S. Computer Science — Seoul National University, 2016

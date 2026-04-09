@@ -1,0 +1,25 @@
+Henry Patel
+henry.patel@email.com | London, UK
+
+SUMMARY
+MLOps Engineer with 4 years of experience automating ML workflows,
+CI/CD pipelines, and production model monitoring.
+
+SKILLS
+Python, SQL, Docker, Kubernetes, Terraform, Ansible, Jenkins, GitHub Actions,
+CI/CD, MLOps, Airflow, Kubeflow, MLflow, Prometheus, Grafana, Elasticsearch,
+AWS, GCP, Azure, Linux, Bash, Shell Scripting, Machine Learning,
+scikit-learn, TensorFlow, Model Monitoring, Drift Detection, Feature Store
+
+EXPERIENCE
+MLOps Engineer — AI Platform Team (2022–Present)
+- Designed ML deployment platform serving 20 production models on Kubernetes
+- Implemented automated model retraining with drift detection (Prometheus)
+- Built CI/CD pipelines for model packaging and deployment (GitHub Actions)
+
+DevOps Engineer — CloudOps Ltd (2020–2022)
+- Managed Kubernetes clusters serving 99.99% uptime SLA
+- Automated infrastructure provisioning with Terraform + Ansible
+
+EDUCATION
+B.Eng. Software Engineering — Imperial College London, 2020
