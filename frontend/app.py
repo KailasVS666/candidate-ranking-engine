@@ -145,6 +145,9 @@ def _render_candidate_stats(c: dict):
     m3.metric("Semantic",      f"{c['semantic_score']:.1%}")
     m4.metric("Skill Match",   f"{c['skill_match_ratio']:.1%}")
 
+    if c.get("category"):
+        st.write(f"📂 **Category:** `{c['category']}`")
+
     st.markdown("**✅ Matched Skills**")
     if c["matched_skills"]:
         chips = " ".join(
@@ -204,6 +207,18 @@ with st.sidebar:
                 st.error(f"Error: {r.text}")
         except Exception as exc:
             st.error(f"Cannot reach API: {exc}")
+
+    if st.button("🔄 Sync Resumes from Folders", use_container_width=True):
+        with st.spinner("Syncing files..."):
+            try:
+                r = requests.post(f"{api_base}/sync", timeout=120)
+                if r.status_code == 200:
+                    data = r.json()
+                    st.success(f"Sync complete! Added {data['added_count']} files.")
+                else:
+                    st.error(f"Sync failed: {r.text}")
+            except Exception as exc:
+                st.error(f"Sync error: {exc}")
 
 # ─── Tabs ─────────────────────────────────────────────────────────────────────
 tab_analyze, tab_results, tab_debug = st.tabs(

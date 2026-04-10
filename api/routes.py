@@ -214,6 +214,7 @@ async def analyze(
                 rank=res["rank"],
                 candidate_name=res["candidate_name"],
                 filename=res["filename"],
+                category=candidate.category,
                 tfidf_score=res["tfidf_score"],
                 semantic_score=res["semantic_score"],
                 hybrid_score=res["hybrid_score"],
@@ -249,6 +250,67 @@ async def clear_data(db: Session = Depends(get_db)):
     db.execute(delete(Candidate))
     db.commit()
     return {"status": "cleared", "message": "All database records removed."}
+
+
+# ─── Sync & Ingestion ───────────────────────────────────────────────────────
+
+@router.post("/sync", tags=["System"])
+async def sync_resumes(db: Session = Depends(get_db)):
+    """
+    Recursively scan UPLOAD_DIR for PDFs and TXTs not yet in the database.
+    Assigns category based on parent folder name.
+    """
+    # 1. Get existing filenames in DB
+    existing = set(db.execute(select(Candidate.filename)).scalars().all())
+    
+    # 2. Scan Filesystem
+    added_count = 0
+    # rglob for common resume extensions
+    for path in UPLOAD_DIR.rglob("*"):
+        if path.is_dir() or path.suffix.lower() not in {".pdf", ".txt", ".md"}:
+            continue
+            
+        # Unique filename is relative to UPLOAD_DIR for our logic
+        rel_path = path.relative_to(UPLOAD_DIR)
+        unique_name = str(rel_path).replace("\\", "/") # standardize to forward slashes
+        
+        if unique_name in existing:
+            continue
+            
+        # Determine Category (parent folder name if it's not UPLOAD_DIR itself)
+        category = "General"
+        if path.parent != UPLOAD_DIR:
+            category = path.parent.name
+            
+        # Extraction
+        try:
+            if path.suffix.lower() == ".pdf":
+                raw_text = extract_text_from_pdf(path)
+            else:
+                raw_text = extract_text_from_txt(path)
+                
+            clean = clean_text(raw_text)
+            
+            # Save to DB
+            db_candidate = Candidate(
+                filename=unique_name,
+                original_name=path.name,
+                raw_text=raw_text,
+                clean_text=clean,
+                category=category
+            )
+            db.add(db_candidate)
+            added_count += 1
+            logger.info(f"Sync discovered: {unique_name} (Category: {category})")
+        except Exception as e:
+            logger.error(f"Failed to ingest during sync: {path}. Error: {e}")
+
+    db.commit()
+    return {
+        "status": "success", 
+        "added_count": added_count,
+        "message": f"Discovered and ingested {added_count} new candidates."
+    }
 
 
 # ─── List Results ─────────────────────────────────────────────────────────────
@@ -297,11 +359,17 @@ async def get_resume_file(filename: str):
     Serve the raw resume file (PDF or TXT) for previewing.
     Includes security checks to prevent path traversal.
     """
-    # Security: Ensure the filename doesn't contain path traversal characters
-    if ".." in filename or "/" in filename or "\\" in filename:
-        raise HTTPException(status_code=400, detail="Invalid filename.")
-
-    file_path = UPLOAD_DIR / filename
+    # Security: Ensure the filename doesn't contain path traversal outside UPLOAD_DIR
+    # BUT allow internal subdirectories (e.g. Engineering/file.pdf)
+    if ".." in filename:
+        raise HTTPException(status_code=400, detail="Path traversal not allowed.")
+    
+    # Resolve relative to UPLOAD_DIR
+    file_path = (UPLOAD_DIR / filename).resolve()
+    
+    # Verify it is still inside UPLOAD_DIR
+    if not str(file_path).startswith(str(UPLOAD_DIR.resolve())):
+        raise HTTPException(status_code=403, detail="Access denied.")
     
     if not file_path.exists() or not file_path.is_file():
         logger.error(f"File not found: {file_path}")
