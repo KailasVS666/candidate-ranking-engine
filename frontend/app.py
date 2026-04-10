@@ -308,34 +308,34 @@ with tab_analyze:
             ),
         )
 
-    with col2:
-        st.subheader("🏆 Ranking Results")
+    st.divider()
+    st.subheader("🏆 Ranking Results")
 
-        if st.button("🚀 Analyze & Rank Candidates", use_container_width=True, type="primary"):
-            if not jd_text.strip():
-                st.warning("Please enter a job description first.")
-            else:
-                with st.spinner("Running NLP pipeline … this may take a moment."):
-                    try:
-                        resp = requests.post(
-                            f"{api_base}/analyze",
-                            data={"job_description": jd_text, "top_n": top_n},
-                            timeout=180,
-                        )
-                        if resp.status_code == 200:
-                            result = resp.json()
-                            st.session_state["last_result"] = result
-                            _render_results(result, api_base)
-                        else:
-                            st.error(f"Analysis failed ({resp.status_code}): {resp.text}")
-                    except Exception as exc:
-                        st.error(f"API error: {exc}")
-
-        elif "last_result" in st.session_state:
-            st.info("Showing last analysis result. Upload new resumes and click Analyze to refresh.")
-            _render_results(st.session_state["last_result"], api_base)
+    if st.button("🚀 Analyze & Rank Candidates", use_container_width=True, type="primary"):
+        if not jd_text.strip():
+            st.warning("Please enter a job description first.")
         else:
-            st.info("Upload resumes and click **Analyze** to see results here.")
+            with st.spinner("Running NLP pipeline … this may take a moment."):
+                try:
+                    resp = requests.post(
+                        f"{api_base}/analyze",
+                        data={"job_description": jd_text, "top_n": top_n},
+                        timeout=180,
+                    )
+                    if resp.status_code == 200:
+                        result = resp.json()
+                        st.session_state["last_result"] = result
+                        _render_results(result, api_base)
+                    else:
+                        st.error(f"Analysis failed ({resp.status_code}): {resp.text}")
+                except Exception as exc:
+                    st.error(f"API error: {exc}")
+
+    elif "last_result" in st.session_state:
+        st.info("Showing last analysis result. Upload new resumes and click Analyze to refresh.")
+        _render_results(st.session_state["last_result"], api_base)
+    else:
+        st.info("Upload resumes and click **Analyze** to see results here.")
 
 
 # ── Tab 2: Browse saved results ───────────────────────────────────────────────
