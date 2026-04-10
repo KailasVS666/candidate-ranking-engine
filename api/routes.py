@@ -25,6 +25,7 @@ from sqlalchemy import select, delete
 from api.schemas import (
     AnalysisResponse,
     CandidateResponse,
+    FeedbackRequest,
     HealthResponse,
     JobDescriptionRequest,
     KeywordOverlap,
@@ -374,7 +375,7 @@ async def get_result(analysis_id: int, db: Session = Depends(get_db)):
             } for s in scores
         ]
     }
-@router.get("/resumes/{filename}", tags=["Resumes"])
+@router.get("/resumes/{filename:path}", tags=["Resumes"])
 async def get_resume_file(filename: str):
     """
     Serve the raw resume file (PDF or TXT) for previewing.

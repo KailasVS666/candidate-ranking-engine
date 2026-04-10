@@ -90,10 +90,10 @@ def _display_pdf(filename: str, api_base: str):
         if resp.status_code == 200:
             if filename.lower().endswith(".pdf"):
                 base64_pdf = base64.b64encode(resp.content).decode('utf-8')
-                pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
+                pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="800" type="application/pdf"></iframe>'
                 st.markdown(pdf_display, unsafe_allow_html=True)
             else:
-                st.text_area("Resume Content", resp.text, height=600)
+                st.text_area("Resume Content", resp.text, height=800)
         else:
             st.error(f"Could not load resume: {resp.text}")
     except Exception as e:
@@ -127,12 +127,10 @@ def _render_results(result: dict, api_base: str) -> None:
             show_preview = st.toggle("🔍 Toggle Resume Preview", key=f"preview_{c['filename']}")
             
             if show_preview:
-                col_stats, col_pdf = st.columns([1, 1.2])
-                with col_stats:
-                    _render_candidate_stats(c, api_base)
-                with col_pdf:
-                    st.info(f"📄 Previewing: **{c['candidate_name']}**")
-                    _display_pdf(c["filename"], api_base)
+                _render_candidate_stats(c, api_base)
+                st.divider()
+                st.info(f"📄 Full Resume Preview: **{c['candidate_name']}**")
+                _display_pdf(c["filename"], api_base)
             else:
                 _render_candidate_stats(c, api_base)
 
