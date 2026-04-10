@@ -207,6 +207,7 @@ async def analyze(
             keyword_overlap=res["keyword_overlap"]
         )
         db.add(db_score)
+        db.flush()  # Generate score.id for the response
         
         # Prepare response model
         top_candidates_responses.append(
