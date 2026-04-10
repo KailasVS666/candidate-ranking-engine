@@ -129,16 +129,58 @@ def _render_results(result: dict, api_base: str) -> None:
             if show_preview:
                 col_stats, col_pdf = st.columns([1, 1.2])
                 with col_stats:
-                    _render_candidate_stats(c)
+                    _render_candidate_stats(c, api_base)
                 with col_pdf:
                     st.info(f"📄 Previewing: **{c['candidate_name']}**")
                     _display_pdf(c["filename"], api_base)
             else:
-                _render_candidate_stats(c)
+                _render_candidate_stats(c, api_base)
 
 
-def _render_candidate_stats(c: dict):
+def _render_candidate_stats(c: dict, api_base: str):
     """Renders the metrics and skills for a candidate."""
+    # ─── Rating / Feedback Logic ──────────────────────────────────────────────
+    with st.container(border=True):
+        st.markdown("### 🏆 Human Expert Feedback")
+        
+        # Determine "AI Assistant Recommendation"
+        score = c["hybrid_score"]
+        if score > 0.75:
+            rec = "Expert recommends **10/10**. Almost direct match."
+        elif score > 0.5:
+            rec = "Expert recommends **7-8/10**. Strong fit with some gaps."
+        elif score > 0.3:
+            rec = "Expert recommends **4-5/10**. Significant skill gaps."
+        else:
+            rec = "Expert recommends **1-2/10**. Likely a mismatch."
+            
+        st.info(f"🤖 **Assistant:** {rec}")
+        
+        # Rating Slider
+        current_val = c.get("manual_score") if c.get("manual_score") is not None else (score * 10)
+        rating = st.slider(
+            f"Set Rating for {c['candidate_name']}",
+            0.0, 10.0, float(current_val), 0.5,
+            key=f"slider_{c['score_id']}"
+        )
+        
+        notes = st.text_input("Feedback notes (optional)", value=c.get("feedback_notes") or "", key=f"notes_{c['score_id']}")
+        
+        if st.button("💾 Save Human Rating", key=f"btn_{c['score_id']}", use_container_width=True):
+            try:
+                resp = requests.post(
+                    f"{api_base}/feedback",
+                    json={"score_id": c["score_id"], "manual_score": rating, "notes": notes},
+                    timeout=5
+                )
+                if resp.status_code == 200:
+                    st.success("Expert rating saved to Trainer Database!")
+                else:
+                    st.error(f"Error saving: {resp.text}")
+            except Exception as e:
+                st.error(f"Cannot reach API: {e}")
+
+    st.divider()
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Hybrid Score",  f"{c['hybrid_score']:.1%}")
     m2.metric("TF-IDF",        f"{c['tfidf_score']:.1%}")

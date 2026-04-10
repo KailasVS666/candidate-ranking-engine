@@ -87,6 +87,10 @@ class RankingScore(Base):
     # Additional keyword data
     keyword_overlap: Mapped[dict] = mapped_column(JSON)
 
+    # Human Feedback (Active Learning)
+    manual_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    feedback_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
     # Relationships
     candidate: Mapped["Candidate"] = relationship(back_populates="rankings")
     analysis: Mapped["JobAnalysis"] = relationship(back_populates="scores")

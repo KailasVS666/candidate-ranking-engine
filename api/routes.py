@@ -215,6 +215,9 @@ async def analyze(
                 candidate_name=res["candidate_name"],
                 filename=res["filename"],
                 category=candidate.category,
+                score_id=db_score.id,
+                manual_score=None,
+                feedback_notes=None,
                 tfidf_score=res["tfidf_score"],
                 semantic_score=res["semantic_score"],
                 hybrid_score=res["hybrid_score"],
@@ -235,6 +238,23 @@ async def analyze(
         top_candidates=top_candidates_responses,
         result_file=f"db_analysis_{db_analysis.id}",
     )
+
+
+@router.post("/feedback", tags=["Analysis"])
+async def submit_feedback(data: FeedbackRequest, db: Session = Depends(get_db)):
+    """
+    Update a ranking score with manual user feedback (1-10 rating).
+    This data is used to train future machine learning models.
+    """
+    score = db.get(RankingScore, data.score_id)
+    if not score:
+        raise HTTPException(status_code=404, detail="Ranking record not found.")
+
+    score.manual_score = data.manual_score
+    score.feedback_notes = data.notes
+    db.commit()
+
+    return {"status": "success", "message": f"Rating of {data.manual_score}/10 saved."}
 
 
 # ─── Clear All Data ───────────────────────────────────────────────────────────

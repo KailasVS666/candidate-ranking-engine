@@ -32,6 +32,13 @@ class JobDescriptionRequest(BaseModel):
     )
 
 
+class FeedbackRequest(BaseModel):
+    """Payload for submitting user feedback on a candidate score."""
+    score_id: int
+    manual_score: float = Field(..., ge=0, le=10)
+    notes: Optional[str] = None
+
+
 # ─── Response Models ──────────────────────────────────────────────────────────
 
 class KeywordOverlap(BaseModel):
@@ -46,6 +53,12 @@ class CandidateResponse(BaseModel):
     candidate_name: str
     filename: str
     category: Optional[str] = Field(None, description="Resume category based on folder structure")
+    
+    # NEW: Include current manual score if it exists
+    score_id: int
+    manual_score: Optional[float] = None
+    feedback_notes: Optional[str] = None
+    
     tfidf_score: float          = Field(description="Baseline TF-IDF cosine similarity [0-1]")
     semantic_score: float       = Field(description="Semantic embedding similarity [0-1]")
     hybrid_score: float         = Field(description="Weighted hybrid score [0-1]")
