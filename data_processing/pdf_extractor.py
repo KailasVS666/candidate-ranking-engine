@@ -15,41 +15,38 @@ logger = get_logger(__name__)
 
 def extract_text_from_pdf(filepath: str | Path) -> str:
     """
-    Extract all text from *filepath*.
-
-    Strategy:
-      1. Try pdfplumber  → works well for most digital PDFs.
-      2. Fall back to PyMuPDF (fitz) if pdfplumber yields nothing.
-      3. Return empty string if both fail (caller must handle this case).
-
-    Args:
-        filepath: Absolute or relative path to the PDF file.
-
-    Returns:
-        Extracted text as a single string (pages joined by newlines).
+    Extract text from PDF with layout-aware fallback logic.
     """
     filepath = Path(filepath)
-
     if not filepath.exists():
         logger.error(f"PDF not found: {filepath}")
         return ""
 
-    # ── Attempt 1: PyMuPDF (Optimised for Layout) ────────────────────────────
-    # PyMuPDF with sort=True is much better at handling multi-column resumes
-    text = _extract_with_pymupdf(filepath)
-    if text.strip():
-        logger.debug(f"PyMuPDF extracted {len(text)} chars from {filepath.name}")
-        return text
-    
-    # ── Attempt 2: pdfplumber (Fallback) ──────────────────────────────────────
-    logger.warning(f"PyMuPDF failed for {filepath.name}; trying pdfplumber …")
+    # 1. Attempt Primary: pdfplumber (best for clean text structure)
     text = _extract_with_pdfplumber(filepath)
-    if text.strip():
-        logger.debug(f"pdfplumber extracted {len(text)} chars from {filepath.name}")
+    
+    # 2. Heuristic check: 
+    # If text is empty OR suspiciously short (< 200 chars), it might be 
+    # a multi-column layout that pdfplumber failed to parse.
+    if len(text.strip()) > 200:
+        logger.info(f"pdfplumber extracted {len(text)} chars from {filepath.name}")
         return text
 
-    logger.error(f"Both extractors failed for {filepath.name}.")
+    # 3. Fallback: PyMuPDF (best for layout sorting)
+    logger.info(f"pdfplumber yielded thin results ({len(text)} chars); falling back to PyMuPDF...")
+    text_fallback = _extract_with_pymupdf(filepath)
+    
+    # Return the one that gave us more meaningful data
+    if len(text_fallback.strip()) > len(text.strip()):
+        logger.info(f"PyMuPDF extracted {len(text_fallback)} chars from {filepath.name}")
+        return text_fallback
+    
+    if text.strip():
+        return text
+
+    logger.error(f"HARD EXTRACTION FAIL: No text found for {filepath.name}")
     return ""
+
 
 
 # ─── Private helpers ──────────────────────────────────────────────────────────

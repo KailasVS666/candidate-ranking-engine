@@ -26,7 +26,7 @@ from config.settings import (
     MIN_SCORE_THRESHOLD,
 )
 from models.tfidf_scorer import compute_tfidf_scores
-from models.semantic_scorer import compute_semantic_scores
+from models.vector_store import VectorStoreManager
 from feature_engineering.skill_extractor import extract_skills, compute_skill_overlap
 from utils.logger import get_logger
 
@@ -75,6 +75,9 @@ class CandidateRanker:
     different similarity metrics with skill-based extraction logic.
     """
 
+    def __init__(self):
+        self.vstore = VectorStoreManager()
+
     def rank(
         self,
         job_description_clean: str,
@@ -86,17 +89,6 @@ class CandidateRanker:
     ) -> List[Dict[str, Any]]:
         """
         Score and rank all candidates for a given job description.
-
-        Args:
-            job_description_clean (str): Preprocessed JD text.
-            job_description_raw (str): Original JD text (for semantic embeddings).
-            resumes_clean (List[str]): List of preprocessed resume texts.
-            resumes_raw (List[str]): List of original resume texts.
-            filenames (List[str]): Corresponding filenames for the resumes.
-            top_n (int): Max number of candidates to return.
-
-        Returns:
-            List[Dict[str, Any]]: Sorted results list with scores and skill chips.
         """
         n: int = len(resumes_clean)
         if n == 0:
@@ -107,7 +99,22 @@ class CandidateRanker:
 
         # 1. Compute similarity vectors
         tfidf_scores: List[float] = compute_tfidf_scores(job_description_clean, resumes_clean)
-        semantic_scores: List[float] = compute_semantic_scores(job_description_raw, resumes_raw)
+        
+        # Semantic Scores via Vector Store (ChromaDB)
+        # Query for ALL resumes to get their semantic similarity to the JD
+        vs_results = self.vstore.query_similar(job_description_raw, n_results=n)
+        
+        semantic_map = {}
+        # Ensure we have results and handle nested structure safely
+        if vs_results and "ids" in vs_results and vs_results["ids"] and vs_results["ids"][0]:
+            for i in range(len(vs_results['ids'][0])):
+                fname = vs_results['ids'][0][i]
+                dist  = vs_results['distances'][0][i]
+                similarity = max(0.0, 1.0 - dist)
+                semantic_map[fname] = round(float(similarity), 6)
+        else:
+            logger.warning("Vector Store returned no results for query.")
+
 
         # 2. Extract JD skills once
         jd_skills: Set[str] = extract_skills(job_description_raw, method="hybrid")
@@ -129,7 +136,7 @@ class CandidateRanker:
                 candidate_name=_name_from_filename(filenames[idx]),
                 filename=filenames[idx],
                 tfidf_score=tfidf_scores[idx],
-                semantic_score=semantic_scores[idx],
+                semantic_score=semantic_map.get(filenames[idx], 0.0),
                 hybrid_score=0.0,  # Calculated below
                 skill_match_ratio=overlap["match_ratio"],
                 matched_skills=overlap["matched_skills"],
@@ -145,11 +152,12 @@ class CandidateRanker:
             
             # Hybrid Calculation (Now with 3 pillars!)
             result.hybrid_score = round(
-                TFIDF_WEIGHT * tfidf_scores[idx] + 
-                SEMANTIC_WEIGHT * semantic_scores[idx] +
+                TFIDF_WEIGHT * result.tfidf_score + 
+                SEMANTIC_WEIGHT * result.semantic_score +
                 SKILL_WEIGHT * result.skill_match_ratio,
                 6
             )
+
             
             results.append(result)
 

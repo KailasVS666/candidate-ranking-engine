@@ -63,6 +63,9 @@ API_RELOAD: bool = os.getenv("API_RELOAD", "true").lower() == "true"
 # SQLite database file path
 DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{STORAGE_DIR}/app.db")
 
+# Vector Database (ChromaDB) persistent storage path
+VECTOR_DB_PATH: str = os.getenv("VECTOR_DB_PATH", str(STORAGE_DIR / "vector_db"))
+
 # ─── Frontend ────────────────────────────────────────────────────────────────
 STREAMLIT_PAGE_TITLE: str = "AI Resume Screening System"
 STREAMLIT_LAYOUT: str      = "wide"

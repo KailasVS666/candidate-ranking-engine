@@ -37,11 +37,13 @@ from config.settings import UPLOAD_DIR, PROCESSED_DIR, RESULTS_DIR
 from data_processing.pdf_extractor import extract_text_from_pdf, extract_text_from_txt
 from data_processing.text_cleaner import clean_text
 from models.ranker import CandidateRanker
+from models.vector_store import VectorStoreManager
 from utils.file_utils import generate_unique_filename, save_upload, save_json
 from utils.logger import get_logger
 
 logger = get_logger(__name__)
 router = APIRouter()
+vector_store = VectorStoreManager()
 
 
 # ─── Health ───────────────────────────────────────────────────────────────────
@@ -125,6 +127,10 @@ async def upload_resume(
         )
         db.add(db_candidate)
         uploaded_names.append(original_name)
+        
+        # 4. Add to Vector Store
+        vector_store.add_resumes([clean], [unique_name])
+        
         logger.info(f"Uploaded & stored in DB: {original_name} → {unique_name}")
 
     db.commit()
@@ -271,7 +277,11 @@ async def clear_data(db: Session = Depends(get_db)):
     db.execute(delete(JobAnalysis))
     db.execute(delete(Candidate))
     db.commit()
-    return {"status": "cleared", "message": "All database records removed."}
+    
+    # Also clear the vector store
+    vector_store.clear()
+    
+    return {"status": "cleared", "message": "All database records and vector embeddings removed."}
 
 
 # ─── Sync & Ingestion ───────────────────────────────────────────────────────
@@ -328,6 +338,18 @@ async def sync_resumes(db: Session = Depends(get_db)):
             logger.error(f"Failed to ingest during sync: {path}. Error: {e}")
 
     db.commit()
+    
+    # 3. Update Vector Store with all new candidates
+    if added_count > 0:
+        new_candidates = db.execute(
+            select(Candidate).where(Candidate.filename.notin_(existing))
+        ).scalars().all()
+        
+        vector_store.add_resumes(
+            texts=[c.clean_text for c in new_candidates],
+            filenames=[c.filename for c in new_candidates]
+        )
+        
     return {
         "status": "success", 
         "added_count": added_count,

@@ -21,6 +21,7 @@ from pathlib import Path
 
 import requests
 import streamlit as st
+import plotly.graph_objects as go
 
 # ─── Path fix so imports from project root work ───────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
@@ -100,8 +101,71 @@ def _display_pdf(filename: str, api_base: str):
         st.error(f"Error fetching resume: {e}")
 
 
+def _render_skill_radar(c: dict):
+    """Render a Plotly Radar Chart for candidate score breakdown."""
+    categories = ['Semantic Match', 'Statistical (TF-IDF)', 'Explicit Skill Match']
+    values = [
+        c.get('semantic_score', 0) * 100,
+        c.get('tfidf_score', 0) * 100,
+        c.get('skill_match_ratio', 0) * 100
+    ]
+    
+    # We close the radar chart by repeating the first element
+    values += values[:1]
+    categories += categories[:1]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=values,
+        theta=categories,
+        fill='toself',
+        name=c['candidate_name'],
+        line_color='#764ba2',
+        fillcolor='rgba(118, 75, 162, 0.3)'
+    ))
+
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(visible=True, range=[0, 100])
+        ),
+        showlegend=False,
+        margin=dict(l=40, r=40, t=20, b=20),
+        height=300
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def _render_pool_analytics(result: dict):
+    """Render high-level analytics for the entire candidate pool."""
+    candidates = result.get("top_candidates", [])
+    if not candidates:
+        return
+
+    scores = [c['hybrid_score'] * 100 for c in candidates]
+    
+    with st.container(border=True):
+        st.markdown("### 📊 Pool Insights")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Highest Score", f"{max(scores):.1f}%")
+        c2.metric("Average Score", f"{(sum(scores)/len(scores)):.1f}%")
+        c3.metric("Candidate Pool Size", result.get("total_resumes_processed", 0))
+        
+        # Mini Histogram
+        fig = go.Figure(data=[go.Histogram(x=scores, nbinsx=10, marker_color='#667eea')])
+        fig.update_layout(
+            title="Hybrid Score Distribution",
+            xaxis_title="Score (%)",
+            yaxis_title="Count",
+            height=250,
+            margin=dict(l=20, r=20, t=40, b=20)
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+
 def _render_results(result: dict, api_base: str) -> None:
     """Render ranking cards from API response dict."""
+    _render_pool_analytics(result)
+    
     candidates = result.get("top_candidates", [])
     total = result.get("total_resumes_processed", 0)
     st.caption(f"Processed **{total}** resumes · showing top **{len(candidates)}**")
@@ -179,11 +243,16 @@ def _render_candidate_stats(c: dict, api_base: str):
                 st.error(f"Cannot reach API: {e}")
 
     st.divider()
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Hybrid Score",  f"{c['hybrid_score']:.1%}")
-    m2.metric("TF-IDF",        f"{c['tfidf_score']:.1%}")
-    m3.metric("Semantic",      f"{c['semantic_score']:.1%}")
-    m4.metric("Skill Match",   f"{c['skill_match_ratio']:.1%}")
+    m1, m2 = st.columns([1.5, 1])
+    
+    with m1:
+        _render_skill_radar(c)
+        
+    with m2:
+        st.metric("Hybrid Score",  f"{c['hybrid_score']:.1%}")
+        st.metric("TF-IDF",        f"{c['tfidf_score']:.1%}")
+        st.metric("Semantic",      f"{c['semantic_score']:.1%}")
+        st.metric("Skill Match",   f"{c['skill_match_ratio']:.1%}")
 
     if c.get("category"):
         st.write(f"📂 **Category:** `{c['category']}`")
