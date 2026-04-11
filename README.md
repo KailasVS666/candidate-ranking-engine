@@ -1,404 +1,124 @@
 # 🤖 AI Resume Screening & Candidate Ranking System
 
-> **Production-quality NLP pipeline that ranks candidates against a job description — zero external API calls, 100% local.**
+> **A production-grade ML engineering project that leverages Hybrid NLP (TF-IDF + Semantic Embeddings) and a persistent Vector DB to rank resumes with explainable analytics.**
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green?logo=fastapi)](https://fastapi.tiangolo.com)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35-red?logo=streamlit)](https://streamlit.io)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![ChromaDB](https://img.shields.io/badge/VectorDB-ChromaDB-orange)](https://trychroma.com)
 
 ---
 
-## 📋 Table of Contents
+## 📋 Project Status: Phase 1 & 2a COMPLETE
+The system is currently fully operational as a high-performance **Local Intelligence** engine. It requires zero external API calls and manages all context via a persistent database.
 
-- [Overview](#-overview)
-- [Architecture](#-architecture)
-- [Project Structure](#-project-structure)
-- [How It Works](#-how-it-works)
-- [Setup & Installation](#-setup--installation)
-- [Running the Project](#-running-the-project)
-- [API Reference](#-api-reference)
-- [Example Usage](#-example-usage)
-- [Configuration](#-configuration)
-- [Running Tests](#-running-tests)
-- [Suggestions for Improvement](#-suggestions-for-improvement)
+### ⚡ Key Highlights
+*   **Persistent Semantic Storage**: Integrated **ChromaDB** for efficient vector indexing of candidates.
+*   **Hybrid Scoring (XAI)**: A multi-pillar ranking engine combining **TF-IDF Keyword Matching**, **SBERT Semantic Context**, and **Domain-Driven Skill Extraction**.
+*   **Explainable Analytics**: Interactive radar charts and histograms built with **Plotly** to visualize candidate "fit" across multiple dimensions.
+*   **Hardened PDF Ingestion**: A robust extraction pipeline using a `pdfplumber` + `PyMuPDF (fitz)` cascade to handle complex multi-column layouts.
+*   **Memory Optimized**: Global singleton model loading architecture to maximize performance on local hardware.
 
 ---
 
-## 🎯 Overview
+## 🏗 System Architecture
 
-This system automates the first stage of recruitment — resume screening — using **classical NLP and ML techniques** (no GPT, no paid APIs).
-
-Given a **job description** and a batch of **PDF / TXT resumes**, the system:
-
-1. Extracts and cleans text from each resume
-2. Identifies skills using **rule-based** and **spaCy NLP** extraction
-3. Scores each resume against the JD using **two complementary methods**:
-   - **TF-IDF + Cosine Similarity** (baseline — fast, keyword-focused)
-   - **Sentence-Transformers** (advanced — semantic, meaning-aware)
-4. Combines scores into a **hybrid score** (configurable weights)
-5. Returns a **ranked list** with full explainability per candidate
-
----
-
-## 🏗 Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Streamlit UI                             │
-│              (Upload PDF/TXT · Enter JD · View Results)         │
-└────────────────────────────┬────────────────────────────────────┘
-                             │ HTTP (REST)
-                             ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       FastAPI Backend                           │
-│   POST /upload_resume   POST /analyze   GET /results            │
-└──────┬──────────────────────┬───────────────────────────────────┘
-       │                      │
-       ▼                      ▼
-┌──────────────┐    ┌─────────────────────────────────────────────┐
-│ PDF/TXT      │    │              Ranking Engine                  │
-│ Extractor    │    │                                             │
-│ (pdfplumber  │    │  ┌─────────────┐   ┌─────────────────────┐ │
-│  + PyMuPDF)  │    │  │  TF-IDF     │   │ Sentence-Transformer│ │
-└──────┬───────┘    │  │  Scorer     │   │ (all-MiniLM-L6-v2) │ │
-       │            │  │ (baseline)  │   │   (semantic)        │ │
-       ▼            │  └──────┬──────┘   └────────┬────────────┘ │
-┌──────────────┐    │         └─────────┬──────────┘             │
-│ Text Cleaner │    │               Weighted                      │
-│ (NLTK, regex)│    │            Hybrid Score                     │
-└──────┬───────┘    │                   │                         │
-       │            │  ┌────────────────▼─────────────────────┐  │
-       ▼            │  │       Skill Extractor                 │  │
-┌──────────────┐    │  │  Rule-based + spaCy PhraseMatcher     │  │
-│ Skill        │    │  │  → Matched / Missing / Extra Skills   │  │
-│ Extractor    │    │  └───────────────────────────────────────┘  │
-└──────────────┘    └─────────────────────────────────────────────┘
+```mermaid
+graph TD
+    A[Streamlit Dashboard] <--> B[FastAPI Backend]
+    
+    subgraph "Logic & Processing"
+        B <--> C[Candidate Ranker]
+        C --> D[TF-IDF Scorer]
+        C --> E[Semantic SBERT Scorer]
+        C --> F[Skill Extractor]
+    end
+    
+    subgraph "Persistence Layer"
+        B <--> G[(SQLite - Metadata)]
+        B <--> H[(ChromaDB - Vectors)]
+    end
+    
+    subgraph "Data Ingestion"
+        B <--> I[PDF Ingestion Pipeline]
+        I --> J[pdfplumber - Primary]
+        I --> K[PyMuPDF - Layout Fallback]
+    end
 ```
 
 ---
 
-## 📁 Project Structure
+## 📁 Technical Deep Dive
 
-```
-candidate-ranking-engine/
-│
-├── config/
-│   └── settings.py              # All tunable parameters in one place
-│
-├── data/
-│   ├── skills_list.txt          # 170+ curated skills for rule-based extraction
-│   └── sample_resumes/          # Generated by scripts/generate_sample_data.py
-│
-├── data_processing/
-│   ├── pdf_extractor.py         # PDF → text (pdfplumber + PyMuPDF fallback)
-│   └── text_cleaner.py          # Normalise, stopwords, lemmatise
-│
-├── feature_engineering/
-│   └── skill_extractor.py       # Rule-based + NLP skill extraction + overlap
-│
-├── models/
-│   ├── tfidf_scorer.py          # TF-IDF + cosine similarity baseline
-│   ├── semantic_scorer.py       # Sentence-Transformers semantic scoring
-│   └── ranker.py                # Orchestrator: combines scores, ranks, explains
-│
-├── api/
-│   ├── main.py                  # FastAPI app factory
-│   ├── routes.py                # All endpoint handlers
-│   └── schemas.py               # Pydantic request/response models
-│
-├── frontend/
-│   └── app.py                   # Streamlit UI
-│
-├── scripts/
-│   ├── setup_nlp_models.py      # One-time NLP model download
-│   ├── generate_sample_data.py  # Create synthetic test resumes
-│   └── demo.py                  # Console end-to-end demo
-│
-├── tests/
-│   ├── conftest.py              # Shared pytest fixtures
-│   ├── test_text_cleaner.py     # Unit tests — text preprocessing
-│   ├── test_skill_extractor.py  # Unit tests — skill extraction
-│   ├── test_tfidf_scorer.py     # Unit tests — TF-IDF scoring
-│   ├── test_ranker.py           # Integration tests — full pipeline
-│   └── test_api.py              # API endpoint tests (no server needed)
-│
-├── .env.example                 # Environment variable template
-├── .gitignore
-├── pytest.ini                   # Test configuration
-├── requirements.txt
-├── run_api.py                   # Start FastAPI server
-└── run_frontend.py              # Start Streamlit frontend
-```
+### 1. Hybrid Ranking Methodology
+The engine calculates a `Hybrid Score` by weighting three distinct NLP strategies:
+1.  **Semantic Similarity (60%)**: Contextual understanding of experience using `all-MiniLM-L6-v2`.
+2.  **Statistical Frequency (20%)**: TF-IDF keyword overlap for direct JD alignment.
+3.  **Skill Match Accuracy (20%)**: Direct comparison of extracted skills vs. JD requirements.
 
----
+### 2. The Vector Database Workflow
+Unlike simple memory-based prototypes, this system uses **ChromaDB** to persist candidate embeddings. This allows:
+*   **Instant Querying**: No need to re-embed resumes every time you run an analysis.
+*   **Persistence**: Your candidate pool survives application restarts.
+*   **Scalability**: Ready to handle thousands of resumes without hitting memory limits.
 
-## ⚙️ How It Works
-
-### Step 1 — Text Extraction
-PDF resumes are parsed with **pdfplumber** (primary) and **PyMuPDF** (fallback). Plain-text `.txt` files are read directly.
-
-### Step 2 — Text Cleaning
-Raw text goes through a 10-step pipeline:
-```
-Unicode normalise → Remove URLs/emails → Lowercase → Remove punctuation
-→ Tokenise → Filter short tokens → Remove stopwords (NLTK) → Lemmatise
-```
-
-### Step 3 — Skill Extraction (two strategies)
-| Method | Approach | Strength |
-|--------|----------|----------|
-| **Rule-based** | Regex word-boundary matching against `skills_list.txt` | Fast, precise, no model needed |
-| **NLP-based** | spaCy `PhraseMatcher` on all skill phrases | Handles multi-word phrases robustly |
-| **Hybrid** | Union of both (default) | Best coverage |
-
-### Step 4 — Similarity Scoring
-
-**A. TF-IDF Baseline**
-- Fits a shared vocabulary across (JD + all resumes)
-- Converts each text to a sparse TF-IDF vector
-- Measures cosine angle between resume vector and JD vector
-- Uses sublinear TF damping and bigrams for richer representations
-
-**B. Sentence-Transformer (Semantic)**
-- Encodes JD and each resume as dense 384-dim vectors
-- L2-normalised → cosine similarity = dot product
-- Captures *meaning* beyond keyword overlap
-- Model: `all-MiniLM-L6-v2` (80 MB, runs locally, no API key)
-
-**C. Hybrid Score**
-```
-hybrid_score = 0.40 × tfidf_score + 0.60 × semantic_score
-```
-> Weights are configurable in `config/settings.py`
-
-### Step 5 — Explainability Output (per candidate)
-```json
-{
-  "rank": 1,
-  "candidate_name": "Alice Chen",
-  "hybrid_score": 0.823,
-  "tfidf_score":  0.741,
-  "semantic_score": 0.879,
-  "skill_match_ratio": 0.857,
-  "matched_skills": ["Python", "SQL", "TensorFlow", "Docker", "AWS", "NLP"],
-  "missing_skills": ["Machine Learning"],
-  "extra_skills": ["PyTorch", "Spark", "Kubernetes", "Airflow"],
-  "keyword_overlap": {
-    "common_keyword_count": 34,
-    "jd_keyword_count": 52,
-    "resume_keyword_count": 89
-  }
-}
-```
+### 3. Explainable AI (XAI) Dashboard
+We believe a rank is only as good as its justification. The frontend provides:
+*   **Radar Charts**: Visualize the "Fingerprint" of a candidate's strengths.
+*   **Pool Distribution**: See how a single candidate compares against the entire average of the uploaded pool.
+*   **Skill Gaps**: Highlights precisely which keywords the candidate is missing vs. the JD.
 
 ---
 
 ## 🚀 Setup & Installation
 
 ### Prerequisites
-- Python **3.11+**
-- pip / virtualenv
+*   Python **3.11+**
+*   **SQLite** (Implicit)
+*   At least 4GB RAM (For the SBERT model)
 
-### 1. Clone the repo
+### 1. Clone & Environment
 ```bash
-git clone https://github.com/your-username/candidate-ranking-engine.git
+git clone https://github.com/KailasVS666/candidate-ranking-engine.git
 cd candidate-ranking-engine
+python -m venv venv
+source venv/bin/activate  # venv\Scripts\activate on Windows
 ```
 
-### 2. Create a virtual environment
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# macOS / Linux
-python -m venv venv
-source venv/bin/activate
-```
-
-### 3. Install dependencies
+### 2. Install Dependencies
 ```bash
 pip install -r requirements.txt
-```
-
-### 4. Download NLP models (one-time)
-```bash
 python scripts/setup_nlp_models.py
 ```
-This downloads:
-- NLTK stopwords + wordnet (~15 MB)
-- spaCy `en_core_web_sm` model (~12 MB)
-- Sentence-Transformers `all-MiniLM-L6-v2` (~80 MB)
 
-### 5. Generate sample resumes (optional)
+### 3. Run the Dashboard
 ```bash
-python scripts/generate_sample_data.py
-```
-
----
-
-## ▶️ Running the Project
-
-### Option A — Full Stack (API + UI)
-
-**Terminal 1 — Start the API server:**
-```bash
+# Terminal 1: API
 python run_api.py
-# API docs at: http://127.0.0.1:8000/docs
-```
 
-**Terminal 2 — Start the Streamlit frontend:**
-```bash
-streamlit run frontend/app.py
-# UI at: http://localhost:8501
-```
-
-### Option B — Console Demo (no server needed)
-```bash
-# Generate sample data first
-python scripts/generate_sample_data.py
-
-# Run the demo
-python scripts/demo.py
+# Terminal 2: UI
+python run_frontend.py
 ```
 
 ---
 
-## 📡 API Reference
+## 📈 Future Roadmap
 
-Interactive docs auto-generated by FastAPI at `http://127.0.0.1:8000/docs`
+### Phase 2: Production Hardening (Next)
+*   [ ] **Background Workers**: Integrate Celery + Redis for asynchronous processing of large batches.
+*   [ ] **PostgreSQL Migration**: Move relational metadata to a robust SQL server.
+*   [ ] **Dockerization**: Full containerization of the API, Worker, and DB.
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | Health check & model status |
-| `POST` | `/upload_resume` | Upload PDF/TXT resume files |
-| `POST` | `/analyze` | Rank uploaded resumes vs. a job description |
-| `GET` | `/results` | List saved result JSON files |
-| `GET` | `/results/{filename}` | Retrieve a specific result |
-| `DELETE` | `/clear` | Clear the current session |
-
-### POST /upload_resume
-```bash
-curl -X POST http://localhost:8000/upload_resume \
-  -F "files=@alice_resume.pdf" \
-  -F "files=@bob_resume.txt"
-```
-
-### POST /analyze
-```bash
-curl -X POST http://localhost:8000/analyze \
-  -F "job_description=Senior Data Scientist with Python, ML, TensorFlow, AWS..." \
-  -F "top_n=5"
-```
-
----
-
-## 💡 Example Usage
-
-### Python (direct API call)
-```python
-import requests
-
-# 1. Upload resumes
-with open("resume.pdf", "rb") as f:
-    requests.post(
-        "http://localhost:8000/upload_resume",
-        files=[("files", ("resume.pdf", f, "application/pdf"))],
-    )
-
-# 2. Analyze
-response = requests.post(
-    "http://localhost:8000/analyze",
-    data={
-        "job_description": "Senior Data Scientist — Python, SQL, TensorFlow, AWS...",
-        "top_n": 10,
-    },
-)
-results = response.json()
-
-# 3. Print ranking
-for candidate in results["top_candidates"]:
-    print(
-        f"#{candidate['rank']} {candidate['candidate_name']} "
-        f"— Score: {candidate['hybrid_score']:.1%}"
-    )
-```
-
-### Expected Output
-```
-#1 Alice Chen       — Score: 82.3%   ✅ 6 matched  ❌ 1 missing
-#2 Carol Kim        — Score: 71.4%   ✅ 5 matched  ❌ 2 missing
-#3 Bob Martinez     — Score: 58.9%   ✅ 3 matched  ❌ 4 missing
-#4 Eve Johnson      — Score: 54.1%   ✅ 3 matched  ❌ 4 missing
-#5 Dave Wilson      — Score: 21.3%   ✅ 1 matched  ❌ 6 missing
-```
-
----
-
-## 🔧 Configuration
-
-All parameters live in `config/settings.py`:
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `TFIDF_WEIGHT` | `0.40` | Weight for TF-IDF score in hybrid |
-| `SEMANTIC_WEIGHT` | `0.60` | Weight for semantic score in hybrid |
-| `SENTENCE_TRANSFORMER_MODEL` | `all-MiniLM-L6-v2` | Local embedding model |
-| `SPACY_MODEL` | `en_core_web_sm` | spaCy model for NLP extraction |
-| `TFIDF_MAX_FEATURES` | `5000` | Vocabulary size cap |
-| `TFIDF_NGRAM_RANGE` | `(1, 2)` | Unigrams + bigrams |
-| `TOP_N_CANDIDATES` | `10` | Default number of candidates returned |
-| `REMOVE_STOPWORDS` | `True` | Strip stopwords during cleaning |
-
-> Override any setting via environment variables (see `.env.example`).
-
----
-
-## 🧪 Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test files
-pytest tests/test_text_cleaner.py -v
-pytest tests/test_tfidf_scorer.py -v
-pytest tests/test_ranker.py -v
-pytest tests/test_api.py -v
-
-# Skip slow tests (semantic scoring)
-pytest -m "not slow"
-
-# With coverage report
-pip install pytest-cov
-pytest --cov=. --cov-report=term-missing
-```
-
----
-
-## 🛠 Suggestions for Improvement
-
-| Area | Suggestion |
-|------|-----------|
-| **Storage** | Replace in-memory session store with PostgreSQL or Redis |
-| **Auth** | Add JWT authentication to the FastAPI endpoints |
-| **Scalability** | Move heavy scoring to a Celery task queue (async processing) |
-| **Models** | Try `all-mpnet-base-v2` for higher semantic accuracy (larger model) |
-| **Skills** | Expand `skills_list.txt` with domain-specific skills per job family |
-| **Scoring** | Add Years-of-Experience extraction and weight it in the hybrid score |
-| **UI** | Add PDF preview pane and downloadable CSV export in Streamlit |
-| **MLOps** | Track model performance over time with MLflow or Weights & Biases |
-| **Deployment** | Dockerise with `docker-compose up` (API + Streamlit in one command) |
-| **Testing** | Add property-based tests with Hypothesis for the scoring functions |
+### Phase 3: Advanced Intelligence
+*   [ ] **Cross-Encoder Re-ranking**: Implement a two-stage retrieval process for SOTA accuracy.
+*   [ ] **Experience Extraction**: Weigh candidates by "Years of Experience" extracted via NLP.
+*   [ ] **Candidate Timeline**: Visualize career progression on the dashboard.
 
 ---
 
 ## 📄 License
-
-MIT — see [LICENSE](LICENSE) for details.
+MIT — See [LICENSE](LICENSE) for details.
 
 ---
-
-> Built as a demonstration of production-quality ML engineering with classical NLP.  
-> No LLM APIs. No subscriptions. Everything runs locally.
+> **Built as a demonstration of Production-Grade ML Engineering.**  
+> *No LLM APIs. No Subscriptions. 100% Local Performance.*
